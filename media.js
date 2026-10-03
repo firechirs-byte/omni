@@ -88,7 +88,7 @@ function saveAvatar(url) {
   if (!store(AVATAR_KEY, url)) return false;   // storage full → keep the window open
   myAvatar = url; renderPeople(); renderChat();
   toast('Profile picture saved');
-  Online.avatarChanged(url);   // uploads it when you're signed in online (supabase.js)
+  Online.avatarChanged(url);   // uploads it when you're signed in online (firebase.js)
   setTimeout(() => askMatch(url, 'profile picture'), 50);
 }
 function removeAvatar() {

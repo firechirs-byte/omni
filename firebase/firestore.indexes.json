@@ -1,0 +1,8 @@
+{
+  "indexes": [],
+  "fieldOverrides": [
+    { "collectionGroup": "members",  "fieldPath": "avatar", "indexes": [] },
+    { "collectionGroup": "profiles", "fieldPath": "avatar", "indexes": [] },
+    { "collectionGroup": "messages", "fieldPath": "text",   "indexes": [] }
+  ]
+}

@@ -1,21 +1,19 @@
 /* =====================================================================
    Omni — config.js   ("keys" for going online)
-   While SUPABASE_URL / SUPABASE_ANON_KEY are empty, Omni is local-only:
-   saved on this device, nothing sent anywhere. When they're filled in,
-   Omni connects to that Supabase project (see README → "Going online
-   with Supabase"). Paste values in between the quotes.
+   While FIREBASE_CONFIG is empty ({}), Omni is local-only: saved on this
+   device, nothing sent anywhere. When it's filled in, Omni connects to
+   that Firebase project (see README → "Going online with Firebase").
 
    Safe to put here (they are designed to be public in a web page):
-      SUPABASE_URL, SUPABASE_ANON_KEY  – your Supabase project's address
-                                         and "anon / publishable" key.
-                                         Row Level Security (schema.sql)
-                                         is what actually protects the data.
-      GIF_API_KEY                      – a Giphy or Tenor key (free).
-      AI_ENDPOINT                      – the web address of YOUR server
-                                         function (e.g. a Supabase Edge
-                                         Function), NOT an AI key.
-   NEVER put here: an OpenAI / AI API key, the Supabase "service_role"
-      or "sb_secret_…" key, or any password. Anything in this file can be read by anyone
+      FIREBASE_CONFIG   – the "firebaseConfig" of your Firebase web app
+                          (Firebase console → Project settings → Your apps).
+                          The apiKey in it is NOT a secret: it only says which
+                          project to talk to. firebase/firestore.rules is what
+                          actually protects the data.
+      GIF_API_KEY       – a Giphy or Tenor key (free).
+      AI_ENDPOINT       – the web address of YOUR server function, NOT an AI key.
+   NEVER put here: an OpenAI / AI API key, a Firebase "service account"
+      JSON file, or any password. Anything in this file can be read by anyone
       who opens the app. The AI key lives on the server only.
    ===================================================================== */
 // The app's name. Change it here to rename the app everywhere on screen
@@ -23,11 +21,18 @@
 const APP_NAME = 'Omni';
 
 const OMNI_CONFIG = {
-  SUPABASE_URL: 'https://fvtecqhhigadclxcamyt.supabase.co',        // e.g. 'https://abcdefgh.supabase.co'
-  SUPABASE_ANON_KEY: 'sb_publishable_FJNVZegXu_R9P2R_POq33g_h-uYViux',   // the "publishable" key (sb_publishable_…) or legacy "anon public" key
+  // Omni's Firebase project "omni-chat-kb26" (public web settings, not secrets)
+  FIREBASE_CONFIG: {
+    apiKey: 'AIzaSyBuHlseBCEQBlX_rVrXPQTYhxLhBOIcdBA',
+    authDomain: 'omni-chat-kb26.firebaseapp.com',
+    projectId: 'omni-chat-kb26',
+    storageBucket: 'omni-chat-kb26.firebasestorage.app',
+    messagingSenderId: '1069780378512',
+    appId: '1:1069780378512:web:634fda6f56dfdca6d50915'
+  },
 
   GIF_PROVIDER: 'giphy',   // 'giphy' or 'tenor'
   GIF_API_KEY: 'ImCOqz6XBkHy5uwGZE2pGJLub2bDZxJn',         // GIPHY: developers.giphy.com → Create an App → API key (Tenor: Google Cloud)
 
-  AI_ENDPOINT: ''          // e.g. 'https://abcdefgh.supabase.co/functions/v1/ask-omni'
+  AI_ENDPOINT: ''          // e.g. 'https://ask-omni-xxxx.a.run.app' (your own server function)
 };

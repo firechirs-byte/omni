@@ -18,12 +18,12 @@
    (Omni's own SVG icons), media.js (profile picture, background picture,
    colour matching), extras.js (message menu, emoji picker, GIFs),
    safety.js (parent filter screens), browser.js (mini browser),
-   supabase.js (going online, optional) and assistant.js (Ask Omni).
+   firebase.js (going online, optional) and assistant.js (Ask Omni).
    ===================================================================== */
 
 /* Omni's version number. When you release a change, bump this AND the
    CACHE name in sw.js, so everyone gets the "Update available" banner. */
-const APP_VERSION = '4.0.0';
+const APP_VERSION = '4.1.0';
 
 /* The app's name lives in ONE place: APP_NAME in config.js. The page is written
    with "Omni"; named() swaps it for APP_NAME in the page, pop-ups and toasts. */
@@ -631,7 +631,7 @@ $('#settingsBtn').onclick = () => {
     `<div class="modal-card wide"><b>Sound &amp; updates</b><span>Omni <b id="setVersion">v${APP_VERSION}</b> · ${swReg ? 'saved for offline use' : 'offline mode needs https:// or localhost'}</span>` +
     `<div class="row"><span class="row-left"><label class="switch"><input type="checkbox" id="setSound" ${Sounds.prefs.on ? 'checked' : ''}><span></span></label> Sound on</span>` +
     `<span class="row-left"><button class="close" id="setSoundMore">${icon('volume')} Sound settings</button><button class="close" id="setUpdate">${icon('reload')} Check for updates</button></span></div></div>` +
-    (typeof onlineCardHTML === 'function' ? onlineCardHTML() : '') +   // supabase.js
+    (typeof onlineCardHTML === 'function' ? onlineCardHTML() : '') +   // firebase.js
     safetyHTML(), () => {
       const name = $('#setName').value.trim() || 'Keagan';
       if (guard(name, 'name') === null) return false;

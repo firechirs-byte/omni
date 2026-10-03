@@ -33,7 +33,9 @@ Then go to **http://localhost:8000** in Chrome or Edge. Press `Ctrl+C` in the te
 
 Pick one:
 
-**GitHub Pages**
+**Omni is already on GitHub Pages:** <https://firechirs-byte.github.io/omni/> (repository `firechirs-byte/omni`, published from branch `main`, folder `/`). To update it, replace the files in the repository and commit; the service worker then shows "Update available".
+
+**GitHub Pages (your own copy)**
 1. Make a free account at github.com and create a new repository (e.g. `omni`).
 2. Click **Add file → Upload files** and drag in everything from this folder (not the zip itself).
 3. Go to **Settings → Pages**, set *Source* to **Deploy from a branch**, branch **main**, folder **/ (root)**, then **Save**.
@@ -66,14 +68,14 @@ A zipped copy of the whole site is in `omni.zip` if you want to send it to someo
 ```
 index.html            the page layout (what's on screen)
 styles.css            how it looks: 15 numbered sections, mode personalities near the bottom
-config.js             online settings (Supabase URL + publishable key, GIF key, AI address)
+config.js             online settings (FIREBASE_CONFIG, GIF key, AI address)
 app.js                how it works: modes, themes, rendering, settings, customize, updates
 icons.js              Omni's own hand-drawn SVG icons (icon('send') gives you one)
 media.js              profile pictures (crop), background pictures, colour matching
 extras.js             message menu (edit/delete/forward/copy/react), emoji picker, GIF panel + GIF search
 safety.js             the Settings → Safety screens for the family filter
 browser.js            the mini browser side panel
-supabase.js           going online: accounts, online chats, DMs, live messages, pictures
+firebase.js           going online: accounts, online chats, DMs, live messages, pictures
 assistant.js          the "Ask Omni" helper panel
 sounds.js             all the sound effects (made in code, no sound files)
 filter-words.js       the family filter's default word list (kept out of sight on purpose)
@@ -81,8 +83,11 @@ filter.js             the family filter: finds rude words, PIN hashing
 emoji.js              the emoji list for the picker (plain Unicode emoji)
 fonts/                6 open-licence fonts (woff2) + their OFL licence files + fonts.css
 gifs/                 Omni's own animated GIFs (drawn with code, not copied)
-supabase/schema.sql   the online database: tables + privacy rules (paste into Supabase)
-supabase/functions/ask-omni/index.ts   the Ask Omni server function (keeps the AI key secret)
+firebase/firestore.rules        the online privacy rules (who can read/write what)
+firebase/firestore.indexes.json database index settings
+firebase/storage.rules          rules for Cloud Storage, if you ever turn it on
+firebase/firebase.json          tells the Firebase CLI what to deploy
+(the old Supabase version lives in archive/ in the source copy only)
 sw.js                 service worker: saves files so the app works offline + handles updates
 manifest.webmanifest  app name + icons, for installing
 icon.svg, icons/      the app icons
@@ -114,7 +119,7 @@ Everything is saved in your browser (section **3. Storage**):
 - `omni_v3_board_<mode>`: the whiteboard drawing
 - `omni_v4_avatar`: your profile picture (a small 256 × 256 picture saved as text, a "data URL")
 - `omni_v3_bg_<mode>`: that mode's background picture (shrunk to fit)
-- `omni_v4_auth`: your online sign-in (only when you use Omni online)
+- Firebase keeps your online sign-in in the browser's IndexedDB (`firebaseLocalStorageDb`), only when you use Omni online
 
 Messages from the old version (`omni_v2`) are copied in automatically the first time.
 To peek at the saved data: press `F12` → **Application** → **Local Storage**.
@@ -122,7 +127,7 @@ To peek at the saved data: press `F12` → **Application** → **Local Storage**
 ### Updating after you change code
 The service worker serves the saved copy of each file, so the app opens instantly and works offline. That also means **your code changes won't show up on a normal refresh** when you use http://localhost or a hosted site. You have two options:
 - **While coding:** press `Ctrl+Shift+R` (hard refresh), or in DevTools (`F12`) go to **Application → Service workers** and tick **Update on reload**.
-- **Releasing a new version:** bump `APP_VERSION` in `app.js` (e.g. `4.0.0` → `4.1.0`) **and** `CACHE` in `sw.js` (e.g. `omni-v4.0.0` → `omni-v4.1.0`). Always change both together, and if you add a new file, add it to the `FILES` list in `sw.js` too. Everyone who has Omni open gets an **"A new version of Omni is ready"** banner with a sound. Pressing **Update now** reloads into the new version, which plays a fanfare and says "Updated to v4.1.0". You can also press **Settings → Check for updates**.
+- **Releasing a new version:** bump `APP_VERSION` in `app.js` (e.g. `4.1.0` → `4.2.0`) **and** `CACHE` in `sw.js` (e.g. `omni-v4.1.0` → `omni-v4.2.0`). Always change both together, and if you add a new file, add it to the `FILES` list in `sw.js` too. Everyone who has Omni open gets an **"A new version of Omni is ready"** banner with a sound. Pressing **Update now** reloads into the new version, which plays a fanfare and says "Updated to v4.2.0". You can also press **Settings → Check for updates**.
 
 (Double-clicking `index.html` doesn't use the service worker, so there your changes always show straight away.)
 
@@ -173,7 +178,11 @@ Go to **Settings → Safety** (or the shield button) → **Family word filter**.
 
 **Forgot PIN:** type `RESET` to wipe the filter settings on this device. This is a **device-only** filter until Omni has real accounts and a server. A determined person could reset it or clear the browser data, and Omni can't really check anyone's age (it's an honour system).
 
-## 8. New in v4: pictures, colours, fonts, mini browser
+## 8. New in v4.1: Firebase
+
+Omni's online mode now uses **Firebase** instead of Supabase (section 9): its own project `omni-chat-kb26`, email + password accounts, group chats with invite codes, DMs with friend codes, live messages, and pictures shared only with chat-mates. Everything you could do in v4.0 still works.
+
+## 8b. New in v4: pictures, colours, fonts, mini browser
 
 - **Profile picture:** click your avatar (bottom left) or Settings → Profile picture. Drag to move, slider (or `+`/`-`) to zoom, arrow keys to nudge. It's resized to 256 × 256 in the browser. No picture? You get coloured initials.
 - **Background picture:** Customize → Background picture. Each mode has its own. **Dim** and **Blur** sliders keep text readable; big photos are shrunk (max 1600 px) so they fit in browser storage.
@@ -181,45 +190,43 @@ Go to **Settings → Safety** (or the shield button) → **Family word filter**.
 - **Customize:** 17 fonts (6 bundled: Inter, Atkinson Hyperlegible, Space Grotesk, Nunito, Lexend, JetBrains Mono, plus system font stacks), separate heading font, letter spacing, line height, message width, sidebar width, avatar shape (circle / rounded / square / hex), icon style (sketch / clean / bold), paper grain, animations on/off, and **Saved themes**: name your look and reuse it in any mode.
 - **Fonts:** in `fonts/`, each with its SIL Open Font License (`OFL-*.txt`). They're cached by `sw.js`, so they work offline.
 - **Mini browser** (globe button): type an address or search words. Searches use DuckDuckGo's simple HTML page with safe search on. Many big sites (Google, YouTube, Discord…) refuse to be shown inside other apps. Omni knows the common ones and shows **Open in new tab** instead. If a page stays blank, use the open-in-new-tab button. YouTube video links are turned into the embeddable player. Back / Forward only remember pages you opened from Omni's address bar.
-- **Ask Omni** (sparkle button): a homework/coding helper. It only works once the server function is set up (see section 9, step 7).
+- **Ask Omni** (sparkle button): a homework/coding helper. It only works once the server function is set up (see section 9, step 6).
 
-## 9. Going online with Supabase (step by step, for Keagan and his dad)
+## 9. Going online with Firebase (step by step, for Keagan and his dad)
 
-Supabase gives Omni a real database, sign-in and live messages. The free plan is plenty. **Do this together.**
+Firebase (by Google) gives Omni sign-in, a database (Cloud Firestore) and live messages. The free **Spark** plan is plenty. **Do this together.**
 
-**What's already done:** Keagan's project address (`https://fvtecqhhigadclxcamyt.supabase.co`) and key are already in this copy's `config.js`. Omni checks them when it starts, and the chip at the bottom left tells you what's missing.
+**What's already done:** Omni has its own Firebase project, **`omni-chat-kb26`** (display name "Omni"), separate from every other project. In it:
+- a **Web app** ("Omni Web"); its settings are already in `config.js` as `FIREBASE_CONFIG`. These settings (including `apiKey`) are **public by design**: they only say *which* project to talk to. The security rules are what protect the data.
+- **Cloud Firestore** (database `(default)`, region `asia-southeast1` Singapore, production mode).
+- **Email/Password sign-in** switched on.
+- The privacy rules from `firebase/firestore.rules` deployed.
 
-1. **Check the key.** In Supabase: *Project Settings → API Keys*. Copy the **publishable** key (starts with `sb_publishable_`) for *this* project (or the legacy **anon public** key) and make sure it matches `SUPABASE_ANON_KEY` in `config.js`. If the chip says **"Online key rejected"**, the key is wrong or from another project. **Never** use the `service_role` / `sb_secret_` key in Omni.
-2. **Create the database.** *SQL Editor → New query*, paste **all** of `supabase/schema.sql`, press **Run**. It makes the tables, the privacy rules (Row Level Security), the `avatars` and `gifs` picture buckets and live updates. It's safe to run again after updates. Reload Omni: the chip should say **"Online ready · not signed in"**.
-3. **Sign-in settings.** *Authentication → Sign In / Providers → Email*: keep it on.
-   - **Confirm email** is ON by default: after making an account you must click the link in the email before you can sign in. That's good for kids' accounts.
-   - **Important:** Supabase's built-in email sender only emails people who are members of your Supabase *organisation team*, and only about **2 emails per hour**. Anyone else gets *"Email address not authorized"* and can't confirm their account. Fixes, best first:
-     1. Set up your own email sender (*Authentication → Emails → SMTP Settings*). Free tiers from providers like Resend or Brevo are enough. Then everyone gets their emails (default limit 30/hour; change it in *Authentication → Rate Limits*).
-     2. Just for trying it out as a family: turn **Confirm email** off, so new accounts sign in straight away. (Password-reset emails still won't reach non-team addresses.)
-   - *Authentication → URL Configuration*: set **Site URL** to where Omni lives (e.g. `https://your-name.github.io/omni/`) and add it to **Redirect URLs**. While you only use the `index.html` file, links in emails land on the Site URL, and you then sign in with your password in Omni. (Emailed sign-in links need a real web address.)
-4. **Make accounts.** In Omni: the chip or *Settings → Online account → Create account…*. Under-18s must give a parent/guardian email (saved as `parent_email`; `is_minor` can only be changed by a parent or in the dashboard).
-5. **Chat.** *Settings → Online account*:
+Omni checks all this when it starts; the chip at the bottom left tells you what's missing.
+
+1. **Allow Omni's web address.** Firebase console → *Authentication → Settings → Authorized domains → Add domain* → `firechirs-byte.github.io`. (`localhost` and `omni-chat-kb26.firebaseapp.com` are there already. Email + password sign-in also works without this, but password-reset links and any future Google sign-in need it.)
+2. **Make accounts.** In Omni: the chip or *Settings → Online account → Create account…*. Everyone gives their birth year; anyone under 18 must give a parent/guardian email. The email, birth year and parent email go into a **private** record that only that person can read (`private/{uid}`), and the rules refuse an under-18 account without a parent email. "Forgot password?" emails a reset link.
+3. **Chat.** *Settings → Online account*:
    - **New online chat** creates a group chat with an **invite code**. It appears under the globe server in the left rail. Give the code to friends in real life; they press **Join with code**.
    - **Message a friend** starts a direct message using your friend's **friend code** (each person's is in their Settings). Nobody can search for you, so only people you give your code to can DM you.
-   - Messages, edits and deletes appear live for everyone in the chat. Your profile picture is uploaded to the `avatars` bucket so friends see it.
+   - Messages, edits and deletes appear live for everyone in the chat. Only the person who wrote a message can edit or delete it.
+   - Your name, status and profile picture are shared **only with people in your chats** (each chat keeps a small "member card" for everyone in it). Pictures are stored as small images inside Firestore, so Omni doesn't need Cloud Storage (which needs the paid Blaze plan on new projects).
    - Your local servers, local DMs and notes stay on your device, just like before.
-6. **GIF search.** Keagan's GIPHY key is already in this copy's `config.js` (`GIF_API_KEY`, `GIF_PROVIDER: 'giphy'`). The GIF button's **Search** tab shows **trending** GIFs, and typing searches GIPHY. Only GIFs rated **G** are asked for, search words go through the family filter, and "Powered by GIPHY" is shown as GIPHY's terms require. (A GIPHY key is meant to be used in apps like this, but anyone can see it, so if it's ever misused, make a new one at developers.giphy.com.)
-7. **Ask Omni (optional, needs a paid AI key).** The AI key must never go in the app. Install the Supabase CLI, then in this folder:
-   ```bash
-   supabase login
-   supabase link --project-ref fvtecqhhigadclxcamyt
-   supabase secrets set OPENAI_API_KEY=sk-...        # stays on Supabase's servers
-   supabase functions deploy ask-omni
-   ```
-   Put `https://fvtecqhhigadclxcamyt.supabase.co/functions/v1/ask-omni` in `config.js` as `AI_ENDPOINT`. Only signed-in users can use it. It has a kid-safe system prompt, a moderation check, and sends worrying questions straight to a "talk to a trusted adult" answer.
-8. **Put Omni on https** (section 2) when you're ready for friends to use it. That's needed for installing, offline use and email links. Ask a parent first.
+4. **How the privacy rules work** (`firebase/firestore.rules`, they run on Google's servers so nobody can get around them by changing the app):
+   - Only members can read a chat, its member cards and its messages. Joining needs the invite code; DMs need the friend code.
+   - You can only post as yourself (your id and your name are checked), with the server's time.
+   - Nobody can list chats, friend codes or invite codes, or read someone else's private record.
+   - To change the rules: edit the file, then (with the Firebase CLI, `npm i -g firebase-tools`) run in the `firebase/` folder: `firebase login`, then `firebase deploy --only firestore --project omni-chat-kb26`. Test them first with the emulator (`firebase emulators:start --only firestore`).
+5. **GIF search.** Keagan's GIPHY key is already in this copy's `config.js` (`GIF_API_KEY`, `GIF_PROVIDER: 'giphy'`). The GIF button's **Search** tab shows **trending** GIFs, and typing searches GIPHY. Only GIFs rated **G** are asked for, search words go through the family filter, and "Powered by GIPHY" is shown as GIPHY's terms require. (A GIPHY key is meant to be used in apps like this, but anyone can see it, so if it's ever misused, make a new one at developers.giphy.com.) Online, Omni's own GIFs are sent as links, so they only show for friends once Omni is on https.
+6. **Ask Omni (optional, needs a paid AI key).** The AI key must never go in the app. It needs a small server function that checks the Firebase sign-in token Omni sends (`Authorization: Bearer …`), adds a kid-safe system prompt and a moderation check, then calls the AI. Firebase Cloud Functions need the paid Blaze plan; Cloud Run or another host works too. Put the function's address in `config.js` as `AI_ENDPOINT`. (The old Supabase version of this function is kept in `archive/` in the source copy as a guide.)
+7. **Put Omni on https** (section 2): it's already at <https://firechirs-byte.github.io/omni/>. That's needed for installing and offline use.
 
-**If something goes wrong:** the chip says *Online database not set up* (do step 2), *Online key rejected* (step 1), or *Offline* (no internet: Omni keeps working locally).
+**If something goes wrong:** the chip says *Online database not set up* (Firestore missing: Firebase console → *Build → Firestore Database*), *Online settings rejected* (copy `firebaseConfig` again from *Project settings → Your apps*), or *Offline* (no internet: Omni keeps working locally). If sign-up says email/password is switched off: *Authentication → Sign-in method → Email/Password → Enable*.
 
 ## 10. What's real and what's not (yet)
 
 Omni is honest: **no bots, no fake users**.
-- **Local mode** (no Supabase): messages, DMs, files and the whiteboard are saved **only on this device**.
+- **Local mode** (not signed in): messages, DMs, files and the whiteboard are saved **only on this device**.
 - **Online mode:** online group chats and online DMs really go between accounts, live. Reactions and forwards are still saved on your device only.
 - Mic, camera and screen share really work, but only you can see them. Real calls need WebRTC + a signalling server.
 - The file list stores the file's **name and size**, not the file itself.
@@ -231,7 +238,7 @@ Omni is honest: **no bots, no fake users**.
 The name is in **one place**: `const APP_NAME = 'Omni';` at the top of `config.js`. Change it (e.g. `'Kin'`) and the page title, welcome screen, buttons, pop-ups and messages all use the new name (`named()` and `applyAppName()` in `app.js` do the swap). For the installed app's name, also change `"name"` and `"short_name"` in `manifest.webmanifest`. Saved data keeps working because the storage keys (`omni_v3…`) don't change.
 
 ## 12. Ideas for what to build next
-1. **Parent approval:** an Edge Function that emails `parent_email` an approve link and sets `parent_approved_at`; until then, minors could be limited to group chats.
-2. **Block and report** in online chats (a `reports` table plus an RLS rule so only admins can read it).
-3. **Real calls** with WebRTC (start with two people). Supabase Realtime can carry the signalling messages.
-4. **Online reactions** (a `reactions` table, the same pattern as `messages`).
+1. **Parent approval:** a server function that emails the parent email an approve link and marks the account approved; until then, minors could be limited to group chats.
+2. **Block and report** in online chats (a `reports` collection whose rules let people write reports but only admins read them).
+3. **Real calls** with WebRTC (start with two people). Firestore can carry the signalling messages.
+4. **Online reactions** (a `reactions` field or sub-collection, with rules like the ones for `messages`).

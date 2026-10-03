@@ -93,7 +93,7 @@ function startEdit(i, el) {
     if (clean === null) return;                    // blocked by the family filter
     m.text = clean; m.edited = Date.now();
     saveData(); renderChat(); renderDMs(); toast('Message edited');
-    Online.edited(m);   // supabase.js (only when signed in)
+    Online.edited(m);   // firebase.js (only when signed in)
   };
   ta.addEventListener('keydown', ev => {
     if (ev.key === 'Enter' && !ev.shiftKey) { ev.preventDefault(); save(); }

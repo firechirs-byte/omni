@@ -1,9 +1,9 @@
 /* =====================================================================
    Omni — assistant.js   ("Ask Omni", the AI helper panel)
    The browser NEVER holds an AI key. It sends your question to
-   AI_ENDPOINT (from config.js): your own server function, e.g. the
-   Supabase Edge Function in supabase/functions/ask-omni/index.ts.
-   That function keeps the AI key secret and adds kid-safe rules.
+   AI_ENDPOINT (from config.js): your own server function. It checks
+   your Firebase sign-in token, keeps the AI key secret and adds
+   kid-safe rules (README → Going online → Ask Omni).
    With no AI_ENDPOINT set, the panel just explains how to connect it.
    ===================================================================== */
 const ASK = { log: [], busy: false };
@@ -21,8 +21,8 @@ function renderAsk() {
   if (!on) {
     $('#askLog').innerHTML = named(`<div class="ask-note"><b>Ask Omni needs to be connected.</b><br><br>` +
       `It's a homework and coding helper that will answer questions in a kid-safe way. To switch it on, a grown-up sets up the ` +
-      `server function in <code>supabase/functions/ask-omni</code> (it keeps the AI key secret on the server) and puts its address in ` +
-      `<code>config.js</code> as <code>AI_ENDPOINT</code>.<br><br>See README → “Going online with Supabase”, step 6.<br><br>` +
+      `server function (it keeps the AI key secret on the server) and puts its address in ` +
+      `<code>config.js</code> as <code>AI_ENDPOINT</code>.<br><br>See README → “Going online with Firebase” → Ask Omni.<br><br>` +
       `An AI key must <b>never</b> go into the app's files, because anyone could read it there.</div>`);
     return;
   }
@@ -44,10 +44,9 @@ $('#askForm').onsubmit = async e => {
   ASK.log.push({ role: 'user', content: clean }); $('#askInput').value = ''; ASK.busy = true; renderAsk();
   try {
     const headers = { 'Content-Type': 'application/json' };
-    // Supabase functions check who's asking: send your sign-in token (never an AI key!)
-    const token = typeof Online !== 'undefined' && Online.session?.access_token;
+    // The server function checks who's asking: send your Firebase sign-in token (never an AI key!)
+    const token = typeof Online !== 'undefined' && Online.ready ? await Online.token() : null;
     if (token) headers.Authorization = 'Bearer ' + token;
-    if (OMNI_CONFIG.SUPABASE_ANON_KEY) headers.apikey = OMNI_CONFIG.SUPABASE_ANON_KEY;
     const res = await fetch(askEndpoint(), { method: 'POST', headers, body: JSON.stringify({ messages: ASK.log.slice(-10) }) });
     const body = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(body.error || 'The helper is unavailable (' + res.status + ')');

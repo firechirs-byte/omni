@@ -1,0 +1,164 @@
+rules_version = '2';
+// =====================================================================
+//  Omni — firestore.rules   (who may read and write what, online)
+//  These run on Google's servers, so nobody can get around them by
+//  changing the app. Deploy them with:  firebase deploy --only firestore
+//
+//  What's stored (see README → "Going online with Firebase"):
+//    profiles/{uid}        your public card: name, status, picture   (only YOU read it)
+//    private/{uid}         email, birth year, parent email, friend code (only YOU)
+//    friendCodes/{code}    friend code → user id  (look up one code at a time, no listing)
+//    inviteCodes/{code}    invite code → chat id  (look up one code at a time, no listing)
+//    chats/{chatId}        a group chat or a DM: name, members
+//      members/{uid}       a copy of each member's public card (members only)
+//      messages/{msgId}    the messages (members only; only the author edits/deletes)
+//  Chat-mates see each other's name, status and picture through the
+//  members/{uid} cards. Nobody can search for people or list chats.
+// =====================================================================
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ---------- helpers ----------
+    function signedIn() { return request.auth != null; }
+    function me() { return request.auth.uid; }
+    function chatPath(chatId) { return /databases/$(database)/documents/chats/$(chatId); }
+    function cardPath(chatId, uid) { return /databases/$(database)/documents/chats/$(chatId)/members/$(uid); }
+    function isMember(chatId) { return signedIn() && me() in get(chatPath(chatId)).data.memberIds; }
+    function code8(c) { return c is string && c.matches('[A-Z0-9]{8}'); }
+    function validName(n) { return n is string && n.size() >= 1 && n.size() <= 24; }
+    function validStatus(s) { return s is string && s.size() <= 40; }
+    // pictures are small data URLs (a 256px WebP is about 3–20 KB); never a link to anywhere else
+    function validAvatar(a) { return a is string && a.size() <= 120000 && (a == '' || a.matches('data:image/(webp|jpeg|png);base64,[A-Za-z0-9+/=]+')); }
+    function validEmail(e) { return e is string && e.size() <= 254 && e.matches('[^@ ]+@[^@ ]+[.][^@ ]+'); }
+    function changed() { return request.resource.data.diff(resource.data).affectedKeys(); }
+    // a DM's id is always "dm_<smaller uid>_<bigger uid>", so two people only ever get one DM
+    function dmId(a, b) { return a < b ? 'dm_' + a + '_' + b : 'dm_' + b + '_' + a; }
+
+    // ---------- your public profile (your own copy, used to sync devices) ----------
+    function validProfile(d) {
+      return d.keys().hasOnly(['name', 'status', 'avatar', 'updatedAt'])
+        && validName(d.name) && validStatus(d.get('status', '')) && validAvatar(d.get('avatar', ''))
+        && d.updatedAt == request.time;
+    }
+    match /profiles/{uid} {
+      allow read, delete: if signedIn() && me() == uid;
+      allow create, update: if signedIn() && me() == uid && validProfile(request.resource.data);
+    }
+
+    // ---------- private details: ONLY the owner can ever read them ----------
+    // Under 18 (born in the last 18 years) means a parent/guardian email is required.
+    function validPrivate(d) {
+      return d.keys().hasOnly(['email', 'birthYear', 'isMinor', 'parentEmail', 'friendCode', 'createdAt'])
+        && d.email == request.auth.token.email
+        && d.birthYear is int && d.birthYear >= 1900 && d.birthYear <= request.time.year()
+        && d.isMinor == (d.birthYear > request.time.year() - 19)
+        && d.parentEmail is string && (d.isMinor == false || validEmail(d.parentEmail))
+        && code8(d.friendCode)
+        && getAfter(/databases/$(database)/documents/friendCodes/$(d.friendCode)).data.uid == me();
+    }
+    match /private/{uid} {
+      allow read, delete: if signedIn() && me() == uid;
+      allow create: if signedIn() && me() == uid && validPrivate(request.resource.data) && request.resource.data.createdAt == request.time;
+      // you can fix your parent email, but not change your birth year, age or friend code
+      allow update: if signedIn() && me() == uid && validPrivate(request.resource.data)
+        && changed().hasOnly(['parentEmail', 'email']);
+    }
+
+    // ---------- friend codes: knowing the code is what lets someone DM you ----------
+    match /friendCodes/{code} {
+      allow get: if signedIn();                       // one exact code at a time
+      allow list: if false;                           // no browsing / searching
+      allow create: if signedIn() && code8(code)
+        && request.resource.data.keys().hasOnly(['uid']) && request.resource.data.uid == me()
+        && getAfter(/databases/$(database)/documents/private/$(me())).data.friendCode == code;
+      allow delete: if signedIn() && resource.data.uid == me();
+    }
+
+    // ---------- invite codes: knowing the code is what lets someone join a chat ----------
+    match /inviteCodes/{code} {
+      allow get: if signedIn();
+      allow list: if false;
+      allow create: if signedIn() && code8(code)
+        && request.resource.data.keys().hasOnly(['chatId', 'createdBy'])
+        && request.resource.data.createdBy == me()
+        && getAfter(chatPath(request.resource.data.chatId)).data.inviteCode == code
+        && getAfter(chatPath(request.resource.data.chatId)).data.createdBy == me();
+    }
+
+    // ---------- chats ----------
+    function validGroup(chatId, d) {
+      return d.keys().hasOnly(['kind', 'name', 'mode', 'inviteCode', 'createdBy', 'createdAt', 'memberIds'])
+        && d.kind == 'group' && d.name is string && d.name.size() >= 1 && d.name.size() <= 32
+        && d.mode is string && d.mode.size() <= 16 && code8(d.inviteCode)
+        && d.createdBy == me() && d.createdAt == request.time && d.memberIds == [me()]
+        && getAfter(/databases/$(database)/documents/inviteCodes/$(d.inviteCode)).data.chatId == chatId;
+    }
+    function validDM(chatId, d) {
+      return d.keys().hasOnly(['kind', 'createdBy', 'createdAt', 'memberIds', 'friendCode'])
+        && d.kind == 'dm' && d.createdBy == me() && d.createdAt == request.time
+        && d.memberIds.size() == 2 && d.memberIds[0] == me() && d.memberIds[1] != me()
+        && code8(d.friendCode)
+        && get(/databases/$(database)/documents/friendCodes/$(d.friendCode)).data.uid == d.memberIds[1]
+        && chatId == dmId(me(), d.memberIds[1]);
+    }
+    match /chats/{chatId} {
+      // members only ("resource == null" just lets the app ask "does this DM exist yet?")
+      allow get: if signedIn() && (resource == null || me() in resource.data.memberIds);
+      allow list: if signedIn() && me() in resource.data.memberIds;
+      allow create: if signedIn() && (validGroup(chatId, request.resource.data) || validDM(chatId, request.resource.data));
+      allow update: if signedIn() && changed().hasOnly(['memberIds']) && (
+        // join a group: add only yourself, and your member card must carry the right invite code
+        (resource.data.kind == 'group' && !(me() in resource.data.memberIds)
+          && resource.data.memberIds.size() < 50
+          && request.resource.data.memberIds == resource.data.memberIds.concat([me()])
+          && getAfter(cardPath(chatId, me())).data.code == resource.data.inviteCode)
+        ||
+        // leave: remove only yourself
+        (me() in resource.data.memberIds
+          && request.resource.data.memberIds == resource.data.memberIds.removeAll([me()]))
+      );
+      allow delete: if false;
+
+      // ---- member cards: public name/status/picture, written only by that person ----
+      function validCard(d) {
+        return d.keys().hasOnly(['name', 'status', 'avatar', 'code', 'joinedAt'])
+          && validName(d.name) && validStatus(d.get('status', '')) && validAvatar(d.get('avatar', ''));
+      }
+      match /members/{uid} {
+        allow read: if isMember(chatId);
+        allow create: if signedIn() && me() == uid && validCard(request.resource.data)
+          && request.resource.data.joinedAt == request.time
+          && me() in getAfter(chatPath(chatId)).data.memberIds
+          && (getAfter(chatPath(chatId)).data.kind == 'dm'
+              || request.resource.data.code == getAfter(chatPath(chatId)).data.inviteCode);
+        allow update: if signedIn() && me() == uid && validCard(request.resource.data)
+          && changed().hasOnly(['name', 'status', 'avatar']) && isMember(chatId);
+        allow delete: if signedIn() && me() == uid;
+      }
+
+      // ---- messages: members read; you write as yourself; only the author edits or deletes ----
+      function validText(d) {
+        return d.text is string && d.text.size() <= 2000
+          && d.gif is string && d.gif.size() <= 600 && (d.gif == '' || d.gif.matches('https://[^ ]+'))
+          && (d.text.size() > 0 || d.gif.size() > 0);
+      }
+      match /messages/{msgId} {
+        allow read: if isMember(chatId);
+        allow create: if isMember(chatId)
+          && request.resource.data.keys().hasOnly(['uid', 'name', 'text', 'gif', 'createdAt'])
+          && request.resource.data.uid == me()
+          && request.resource.data.createdAt == request.time
+          && request.resource.data.name == get(cardPath(chatId, me())).data.name   // can't pretend to be someone else
+          && validText(request.resource.data);
+        allow update: if isMember(chatId) && resource.data.uid == me()
+          && changed().hasOnly(['text', 'editedAt'])
+          && request.resource.data.editedAt == request.time
+          && validText(request.resource.data);
+        allow delete: if signedIn() && resource.data.uid == me();
+      }
+    }
+
+    // everything else: closed
+    match /{document=**} { allow read, write: if false; }
+  }
+}
