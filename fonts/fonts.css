@@ -1,0 +1,15 @@
+/* =====================================================================
+   Omni — fonts.css
+   Six free fonts saved right here in the fonts/ folder, so they work
+   offline and nothing is loaded from Google. They are all open source
+   (SIL Open Font License 1.1, see the OFL-*.txt files next to this one).
+   Downloaded from fontsource.org (Latin letters only, to keep them small).
+   "Variable" fonts hold every weight (thin → black) in ONE file.
+   ===================================================================== */
+@font-face{font-family:"Inter";src:url("inter.woff2") format("woff2");font-weight:100 900;font-display:swap}
+@font-face{font-family:"Space Grotesk";src:url("space-grotesk.woff2") format("woff2");font-weight:300 700;font-display:swap}
+@font-face{font-family:"Nunito";src:url("nunito.woff2") format("woff2");font-weight:200 1000;font-display:swap}
+@font-face{font-family:"JetBrains Mono";src:url("jetbrains-mono.woff2") format("woff2");font-weight:100 800;font-display:swap}
+@font-face{font-family:"Lexend";src:url("lexend.woff2") format("woff2");font-weight:100 900;font-display:swap}
+@font-face{font-family:"Atkinson Hyperlegible";src:url("atkinson-hyperlegible-400.woff2") format("woff2");font-weight:400;font-display:swap}
+@font-face{font-family:"Atkinson Hyperlegible";src:url("atkinson-hyperlegible-700.woff2") format("woff2");font-weight:700;font-display:swap}

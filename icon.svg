@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Omni's app icon: a hand-drawn "O" that is also a chat bubble, on charcoal -->
+  <rect width="512" height="512" rx="104" fill="#15171a"/>
+  <!-- the "O" ring, drawn with a slightly wobbly pen -->
+  <path d="M258 108c86 2 150 64 151 146 1 86-66 150-152 150-30 0-58-7-82-21l-62 22 17-58c-17-25-27-57-27-92 0-84 67-149 155-147Z"
+        fill="none" stroke="#c6f432" stroke-width="44" stroke-linejoin="round" stroke-linecap="round"/>
+  <!-- inner dot = you, safe in the middle -->
+  <circle cx="258" cy="256" r="38" fill="#ff5c7a"/>
+</svg>

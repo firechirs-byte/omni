@@ -1,0 +1,343 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="theme-color" content="#14181b" />
+<meta name="description" content="Omni — safe community chat, calls, screen sharing and collaboration for gamers, schools, work crews and friends." />
+<link rel="manifest" href="manifest.webmanifest" />
+<link rel="icon" href="icon.svg" type="image/svg+xml" />
+<link rel="apple-touch-icon" href="icons/icon-192.png" />
+<title>Omni — Community + Meetings</title>
+<!-- Fonts (saved in fonts/), looks (styles.css). Behaviour is in the .js files at the bottom. -->
+<link rel="stylesheet" href="fonts/fonts.css" />
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+<!-- Your background picture (if you set one) sits behind everything -->
+<div class="bg-layer" id="bgLayer" aria-hidden="true"></div>
+
+<div class="app">
+  <!-- 1. Server rail (far left): one button per server / class / site -->
+  <aside class="rail" aria-label="Servers">
+    <button class="home" id="homeBtn" title="Home" aria-label="Home"><i data-icon="logo"></i></button>
+    <div class="sep"></div>
+    <div id="serverList"></div>
+    <button class="dot add" id="addServerBtn" title="Add" aria-label="Add a server"><i data-icon="plus"></i></button>
+  </aside>
+
+  <!-- 2. Sidebar: channels + direct messages + your profile -->
+  <aside class="side" aria-label="Channels and messages">
+    <div class="workspace">
+      <div class="ws-text"><div class="ws-name" id="workspaceName">Server</div><div class="tiny" data-label="workspaceTag">community</div></div>
+      <button class="icon-btn" id="workspaceBtn" title="Workspace options" aria-label="Workspace options"><i data-icon="chevron"></i></button>
+    </div>
+    <div class="side-scroll">
+      <div class="group channel-group">
+        <div class="section" data-label="channels">Channels</div>
+        <div id="channelList"></div>
+        <button class="item add-item" id="addChannelBtn"><span class="ico"><i data-icon="plus"></i></span><span data-label="addChannel">Add channel</span></button>
+      </div>
+      <div class="group dm-group">
+        <div class="section" data-label="dms">Direct messages</div>
+        <div id="dmList"></div>
+        <button class="item add-item" id="addContactBtn"><span class="ico"><i data-icon="plus"></i></span><span data-label="addDm">New direct message</span></button>
+      </div>
+    </div>
+    <!-- Local / online status (supabase.js fills this in) -->
+    <button class="online-chip" id="onlineChip" title="Connect Omni online"><span class="dot-led"></span><span id="onlineText">On this device only</span><span class="chip-cta">Connect online</span></button>
+    <div class="profile">
+      <button class="avatar" id="meAvatar" title="Edit your profile picture" aria-label="Edit your profile">KG</button>
+      <div class="grow"><div class="me" id="meName">Keagan</div><div class="sub" id="meRole">Available</div></div>
+      <button class="icon-btn" id="settingsBtn" title="Settings" aria-label="Settings"><i data-icon="settings"></i></button>
+    </div>
+  </aside>
+
+  <!-- 3. Main area: top bar, stage (meeting / chat), side panels, message box -->
+  <main class="main">
+    <header class="topbar">
+      <button class="icon-btn" id="menuBtn" title="Channels" aria-label="Show channels"><i data-icon="menu"></i></button>
+      <div class="channel-title"><span class="hash" id="channelIcon"></span><h1 id="channelName">general</h1></div>
+      <div class="topic" id="topic"></div>
+      <!-- The mode picker. app.js fills in the 4 buttons from the MODES list -->
+      <nav class="mode-switch" id="modeSwitch" aria-label="Choose a mode"></nav>
+      <div class="top-actions">
+        <button class="icon-btn" id="membersBtn" title="People" aria-label="People"><i data-icon="users"></i></button>
+        <button class="icon-btn" id="callBtn" title="Join voice" aria-label="Join voice"><i data-icon="phone"></i></button>
+        <button class="icon-btn" id="videoBtn" title="Camera" aria-label="Camera"><i data-icon="video"></i></button>
+        <button class="icon-btn" id="browserBtn" title="Mini browser" aria-label="Mini browser"><i data-icon="globe"></i></button>
+        <button class="icon-btn" id="askBtn" title="Ask Omni (AI helper)" aria-label="Ask Omni"><i data-icon="sparkle"></i></button>
+        <button class="icon-btn" id="safetyBtn" title="Safety" aria-label="Safety"><i data-icon="shield"></i></button>
+        <button class="icon-btn" id="customizeBtn" title="Customize the look" aria-label="Customize"><i data-icon="palette"></i></button>
+        <button class="icon-btn" id="installBtn" title="Install Omni as an app" aria-label="Install"><i data-icon="download"></i></button>
+        <button class="search" id="searchBtn" aria-label="Search"><i data-icon="search"></i><span class="lbl">Search</span></button>
+      </div>
+    </header>
+
+    <section class="content">
+      <div class="stage">
+        <!-- Meeting / call. In chat-first layout this shrinks to a thin call bar -->
+        <section class="meeting" id="meetingPanel">
+          <div class="meeting-head">
+            <span class="live" id="livePill">READY</span>
+            <h2 class="meeting-title" id="meetingTitle" data-label="meeting">Meeting</h2>
+            <span class="meeting-count" id="meetingCount">1 participant</span>
+            <div class="grow"></div>
+            <button class="icon-btn" id="copyBtn" title="Copy meeting link" aria-label="Copy meeting link"><i data-icon="link"></i></button>
+            <button class="icon-btn" id="inviteBtn" title="Invite" aria-label="Invite"><i data-icon="userPlus"></i></button>
+          </div>
+          <div class="video-grid">
+            <div class="tile" id="localTile"><video class="local-video" id="localVideo" autoplay playsinline muted></video><div class="face" id="localFace">KG</div><span class="label">You</span><span class="mic" id="localMic"><i data-icon="mic"></i></span></div>
+            <div class="tile" id="waitingTile"><div class="waiting"><div class="plus"><i data-icon="userPlus"></i></div>Waiting for a participant</div><span class="label">No bots or simulated users</span></div>
+            <div class="tile screen" id="screenTile"><div class="screen-card" id="screenCard"><div class="bar"></div><div class="bars"><i></i><i></i><i></i><i style="width:48%"></i></div></div><video id="screenVideo" class="local-video" autoplay playsinline muted></video><span class="label" id="screenLabel">Screen share is off</span></div>
+          </div>
+          <div class="meeting-controls">
+            <button class="ctrl" id="micBtn"><i data-icon="mic"></i><span class="label">Mute</span></button>
+            <button class="ctrl" id="cameraBtn"><i data-icon="video"></i><span class="label">Camera</span></button>
+            <button class="ctrl" id="shareBtn"><i data-icon="screen"></i><span class="label">Share</span></button>
+            <button class="ctrl" id="raiseBtn"><i data-icon="hand"></i><span class="label">Raise hand</span></button>
+            <button class="ctrl" id="reactBtn"><i data-icon="smile"></i><span class="label">React</span></button>
+            <button class="ctrl danger" id="leaveBtn"><i data-icon="leave"></i><span class="label">Leave</span></button>
+          </div>
+        </section>
+
+        <!-- Big chat view (used by chat-first layout, e.g. Casual mode) -->
+        <section class="chat-stage" id="chatStage">
+          <div class="chat-stage-head"><h2 id="bigChatTitle">Chat</h2><span class="pill" id="bigChatPill">this device only</span></div>
+          <div class="chat-list big-chat" id="bigChat"></div>
+        </section>
+
+        <section class="bottom-stage">
+          <div class="whiteboard" id="wbPanel">
+            <div class="wb-head"><span data-label="whiteboard">Collaborative whiteboard</span><span><span id="wbStatus">local autosave</span> · <button class="wb-clear" id="wbClear">Clear</button></span></div>
+            <div class="canvas"><canvas class="whiteboard-canvas" id="wbCanvas"></canvas></div>
+          </div>
+          <div class="attach" id="filesPanel">
+            <h3 data-label="files">Shared files</h3>
+            <div id="fileList"></div>
+            <button class="item add-item" id="uploadBtn"><span class="ico"><i data-icon="paperclip"></i></span><span data-label="upload">Upload or share a file</span></button>
+          </div>
+        </section>
+      </div>
+
+      <!-- Right-hand panels. app.js decides their order for each mode -->
+      <aside class="right">
+        <section class="panel" id="extraPanel">
+          <div class="panel-head"><h3 id="extraTitle">List</h3><span class="pill" id="extraPill">0</span></div>
+          <form class="extra-form" id="extraForm">
+            <input class="mini-input" id="extraText" maxlength="80" autocomplete="off" />
+            <div class="extra-row"><input class="mini-input" id="extraMeta" maxlength="30" autocomplete="off" /><button class="mini-add" type="submit">Add</button></div>
+          </form>
+          <div id="extraList"></div>
+        </section>
+        <section class="panel" id="peoplePanel">
+          <div class="panel-head"><h3 data-label="people">People</h3><span class="pill" id="peoplePill">1 online</span></div>
+          <div id="peopleList"></div>
+          <div class="empty">Remote participants will appear here when connected.</div>
+        </section>
+        <section class="panel" id="breakoutPanel">
+          <div class="panel-head"><h3 data-label="breakouts">Breakout rooms</h3><span class="pill" id="roomPill">3 rooms</span></div>
+          <div id="roomList"></div>
+        </section>
+        <section class="panel" id="chatPanel">
+          <div class="panel-head"><h3 data-label="chat">Live chat</h3><span class="pill" id="chatPill">local</span></div>
+          <div class="chat-list" id="chatList"></div>
+        </section>
+      </aside>
+    </section>
+
+    <form class="composer" id="composer">
+      <div class="compose-box">
+        <button class="icon-btn" type="button" id="attachBtn" title="Attach a file" aria-label="Attach a file"><i data-icon="paperclip"></i></button>
+        <input class="compose-input" id="messageInput" autocomplete="off" maxlength="2000" placeholder="Message #general" aria-label="Message" />
+        <button class="icon-btn gif-btn" type="button" id="gifBtn" title="GIFs" aria-label="GIFs"><i data-icon="gif"></i></button>
+        <button class="icon-btn" type="button" id="emojiBtn" title="Emoji" aria-label="Emoji"><i data-icon="smile"></i></button>
+      </div>
+      <button class="send" type="submit"><span>Send</span><i data-icon="send"></i></button>
+    </form>
+  </main>
+</div>
+
+<!-- "Update available" banner (shown by app.js when sw.js finds a new version) -->
+<div class="update-banner" id="updateBanner" role="alert">
+  <i data-icon="sparkle"></i><span>A new version of Omni is ready.</span>
+  <button class="confirm" id="updateNow">Update now</button>
+  <button class="close" id="updateLater">Later</button>
+</div>
+
+<!-- Emoji picker (filled in by extras.js using emoji.js) -->
+<div class="pop emoji-pop" id="emojiPop" role="dialog" aria-label="Emoji picker">
+  <input class="mini-input" id="emojiSearch" placeholder="Search emoji… (e.g. happy, pizza, heart)" autocomplete="off" />
+  <div class="emoji-tabs" id="emojiTabs"></div>
+  <div class="emoji-title" id="emojiTitle"></div>
+  <div class="emoji-grid" id="emojiGrid"></div>
+</div>
+
+<!-- GIF panel -->
+<div class="pop gif-pop" id="gifPop" role="dialog" aria-label="GIFs">
+  <div class="gif-tabs"><button data-gtab="search">Search</button><button data-gtab="omni" class="active">Omni GIFs</button><button data-gtab="link">Link</button><button data-gtab="file">Computer</button></div>
+  <input class="mini-input" id="gifCaption" maxlength="120" placeholder="Add a caption (optional)" autocomplete="off" />
+  <div class="gif-pane" data-pane="search" hidden>
+    <input class="mini-input" id="gifSearch" placeholder="Search GIFs… (e.g. cat, high five)" autocomplete="off" />
+    <div class="gif-grid" id="gifResults"></div>
+    <p class="tiny" id="gifSearchNote"></p>
+  </div>
+  <div class="gif-pane" data-pane="omni"><div class="gif-grid" id="gifGrid"></div></div>
+  <div class="gif-pane" data-pane="link" hidden>
+    <input class="mini-input" id="gifUrl" placeholder="https://example.com/funny.gif" autocomplete="off" />
+    <button class="confirm" id="gifUrlSend">Send GIF</button>
+    <p class="tiny">Must be an <b>https://</b> link ending in <b>.gif</b>. The picture loads from that website, so it needs internet.</p>
+  </div>
+  <div class="gif-pane" data-pane="file" hidden>
+    <button class="close" id="gifFileBtn"><i data-icon="file"></i> Choose a .gif file…</button>
+    <p class="tiny">Max <b>1.5 MB</b>. It's saved inside this browser, which only has about 5 MB for all of Omni, so small GIFs work best.</p>
+  </div>
+</div>
+<input type="file" id="gifFile" accept="image/gif,.gif" hidden />
+
+<!-- Mini browser (browser.js) -->
+<aside class="side-panel browser-panel" id="browserPanel" aria-label="Mini browser">
+  <div class="bp-bar">
+    <button class="icon-btn" id="bpBack" title="Back" aria-label="Back"><i data-icon="back"></i></button>
+    <button class="icon-btn" id="bpForward" title="Forward" aria-label="Forward"><i data-icon="forward"></i></button>
+    <button class="icon-btn" id="bpReload" title="Reload" aria-label="Reload"><i data-icon="reload"></i></button>
+    <form class="bp-form" id="bpForm"><input class="mini-input" id="bpAddress" placeholder="Search or type a web address" autocomplete="off" spellcheck="false" aria-label="Address or search" /></form>
+    <button class="icon-btn" id="bpExternal" title="Open in a new tab" aria-label="Open in a new tab"><i data-icon="external"></i></button>
+    <button class="icon-btn" id="bpClose" title="Close" aria-label="Close browser"><i data-icon="x"></i></button>
+  </div>
+  <div class="bp-body" id="bpBody"></div>
+  <p class="bp-hint" id="bpHint">Page blank? Some sites don't allow being shown inside other apps. Use <b>Open in a new tab</b> ↗.</p>
+</aside>
+
+<!-- Ask Omni AI helper (assistant.js) -->
+<aside class="side-panel ask-panel" id="askPanel" aria-label="Ask Omni">
+  <div class="ask-head"><div><h2><i data-icon="sparkle"></i> Ask Omni</h2><div class="tiny" id="askStatus">Not connected</div></div><button class="icon-btn" id="askClose" title="Close" aria-label="Close Ask Omni"><i data-icon="x"></i></button></div>
+  <div class="ask-log" id="askLog" aria-live="polite"></div>
+  <form class="ask-form" id="askForm"><textarea class="mini-input" id="askInput" rows="2" maxlength="600" placeholder="Ask a question… (e.g. how do CSS variables work?)"></textarea><button class="confirm" id="askSend">Ask</button></form>
+</aside>
+
+<!-- Pop-up message in the corner -->
+<div class="toast" id="toast" role="status"></div>
+
+<!-- Re-usable pop-up window (settings, search, safety...) -->
+<div class="modal-backdrop" id="modalBackdrop">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+    <h2 id="modalTitle">Omni</h2><p id="modalCopy"></p>
+    <div class="modal-grid" id="modalGrid"></div>
+    <div class="modal-actions"><button class="close" id="closeModal">Close</button><button class="confirm" id="confirmModal">Done</button></div>
+  </div>
+</div>
+
+<!-- Customize drawer: every control here changes the current mode's theme -->
+<aside class="drawer" id="customize" aria-label="Customize">
+  <div class="drawer-head"><div><h2>Customize</h2><div class="tiny" id="customizeMode">Gaming mode</div></div><button class="icon-btn" id="closeCustomize" title="Close" aria-label="Close"><i data-icon="x"></i></button></div>
+  <div class="drawer-body">
+    <h3>Colours</h3>
+    <div class="seg"><button data-scheme="dark">Dark</button><button data-scheme="light">Light</button></div>
+    <div class="color-grid">
+      <label>Accent<input type="color" data-k="accent" /></label>
+      <label>Second accent<input type="color" data-k="accent2" /></label>
+      <label>Background<input type="color" data-k="bg" /></label>
+      <label>Panels<input type="color" data-k="panel" /></label>
+      <label>Text<input type="color" data-k="text" /></label>
+      <label class="contrast-note" id="contrastNote">Text contrast</label>
+    </div>
+
+    <h3>Background picture</h3>
+    <div class="bg-row"><div class="bg-thumb" id="bgThumb"></div><div class="drawer-actions"><button class="close" id="bgChoose"><i data-icon="image"></i> Choose a picture…</button><button class="close" id="bgRemove"><i data-icon="trash"></i> Remove</button><button class="close" id="bgMatch"><i data-icon="palette"></i> Match colours to it</button></div></div>
+    <label class="field">Dim <output data-out="bgDim"></output><input type="range" min="0" max="85" step="5" data-k="bgDim" /></label>
+    <label class="field">Blur <output data-out="bgBlur"></output><input type="range" min="0" max="20" step="1" data-k="bgBlur" /></label>
+    <label class="field">When I add a picture<select id="matchPref"><option value="ask">Ask “Match Omni's colours?”</option><option value="always">Always match colours</option><option value="never">Never match colours</option></select></label>
+
+    <h3>Text</h3>
+    <label class="field">Font<select data-k="font" id="fontSelect"></select></label>
+    <label class="field">Heading font<select data-k="headFont" id="headFontSelect"></select></label>
+    <label class="field">Font size <output data-out="fontSize"></output><input type="range" min="12" max="20" step="1" data-k="fontSize" /></label>
+    <label class="field">Letter spacing <output data-out="letterSpacing"></output><input type="range" min="-3" max="10" step="1" data-k="letterSpacing" /></label>
+    <label class="field">Line height <output data-out="lineHeight"></output><input type="range" min="115" max="190" step="5" data-k="lineHeight" /></label>
+
+    <h3>Shape &amp; spacing</h3>
+    <label class="field">Corner roundness <output data-out="radius"></output><input type="range" min="0" max="24" step="1" data-k="radius" /></label>
+    <label class="field">Density<select data-k="density"><option value="comfortable">Comfortable</option><option value="compact">Compact</option></select></label>
+    <label class="field">Message width <output data-out="msgWidth"></output><input type="range" min="420" max="1400" step="20" data-k="msgWidth" /></label>
+    <label class="field">Sidebar width <output data-out="sideWidth"></output><input type="range" min="190" max="340" step="10" data-k="sideWidth" /></label>
+    <label class="field">Avatar shape<select data-k="avatarShape"><option value="circle">Circle</option><option value="rounded">Rounded square</option><option value="square">Square</option><option value="hex">Hexagon</option></select></label>
+    <label class="field">Icon style<select data-k="iconStyle"><option value="sketch">Sketch (hand-drawn)</option><option value="line">Clean line</option><option value="bold">Bold</option></select></label>
+
+    <h3>Effects</h3>
+    <label class="field">Paper grain <output data-out="grain"></output><input type="range" min="0" max="100" step="5" data-k="grain" /></label>
+    <label class="field">Animations<select data-k="motion"><option value="on">On</option><option value="off">Off (calmer)</option></select></label>
+
+    <h3>Layout</h3>
+    <label class="field">Main view<select data-k="layout"><option value="meeting">Meeting first</option><option value="chat">Chat first</option></select></label>
+    <label class="field">Sidebar side<select data-k="sidebar"><option value="left">Left</option><option value="right">Right</option></select></label>
+    <label class="field">Message style<select data-k="chatStyle"><option value="bubbles">Bubbles</option><option value="list">List</option></select></label>
+    <h3>Show panels</h3>
+    <div class="checks">
+      <label><input type="checkbox" data-panel="meeting" /> Meeting / call</label>
+      <label><input type="checkbox" data-panel="people" /> People</label>
+      <label><input type="checkbox" data-panel="breakouts" /> Breakout rooms</label>
+      <label><input type="checkbox" data-panel="chat" /> Side chat</label>
+      <label><input type="checkbox" data-panel="extra" /> <span id="extraCheckLabel">Mode panel</span></label>
+      <label><input type="checkbox" data-panel="whiteboard" /> Whiteboard</label>
+      <label><input type="checkbox" data-panel="files" /> Files</label>
+    </div>
+    <h3 id="soundSection">Sounds <span class="h3-note">· all modes</span></h3>
+    <div class="snd-master"><label class="switch"><input type="checkbox" data-snd="on"><span></span></label><span>Sound on</span></div>
+    <div id="soundControls">
+      <label class="field">Volume <output data-sndout="volume"></output><input type="range" min="0" max="100" step="5" data-snd="volume" /></label>
+      <label class="field">Sound style<select data-snd="style" id="sndStyle"></select></label>
+      <div class="snd-row"><label><input type="checkbox" data-snd="messages" /> Messages &amp; notifications</label><button class="close" data-test="messages">▶ Test</button></div>
+      <div class="snd-row"><label><input type="checkbox" data-snd="calls" /> Calls, hands &amp; reactions</label><button class="close" data-test="calls">▶ Test</button></div>
+      <div class="snd-row"><label><input type="checkbox" data-snd="updates" /> Updates &amp; install</label><button class="close" data-test="updates">▶ Test</button></div>
+    </div>
+    <p class="tiny">Sounds switch on after your first click (a browser rule). They're made in code (sounds.js), no sound files.</p>
+
+    <h3>Saved themes</h3>
+    <div class="preset-save"><input class="mini-input" id="presetName" maxlength="24" placeholder="Name this look (e.g. Midnight)" autocomplete="off" /><button class="confirm" id="presetSave">Save</button></div>
+    <div id="presetList"></div>
+
+    <h3>Save &amp; share</h3>
+    <div class="drawer-actions">
+      <button class="close" id="resetTheme">↺ Reset to mode default</button>
+      <button class="close" id="exportTheme">⇩ Export theme (.json)</button>
+      <button class="close" id="importTheme">⇧ Import theme</button>
+    </div>
+    <p class="tiny">Each mode remembers its own look. Changes save automatically on this device.</p>
+  </div>
+</aside>
+
+<!-- First-run welcome screen with the 4 modes -->
+<div class="welcome" id="welcome">
+  <div class="welcome-card">
+    <div class="welcome-logo"><i data-icon="logo"></i></div>
+    <h1>Welcome to Omni</h1>
+    <p class="welcome-sub">One app, four ways to talk. Pick a mode. You can switch any time from the top bar.</p>
+    <div class="mode-cards" id="modeCards"></div>
+    <div class="welcome-row">
+      <label>Your display name <input id="welcomeName" maxlength="24" autocomplete="off" /></label>
+      <button class="confirm big" id="welcomeStart">Start Omni →</button>
+    </div>
+    <p class="welcome-note">Safety first: Omni never shows bots or fake people. Right now everything is saved only on this device.</p>
+  </div>
+</div>
+
+<input type="file" id="fileInput" multiple hidden />
+<input type="file" id="themeInput" accept=".json,application/json" hidden />
+<input type="file" id="avatarInput" accept="image/*" hidden />
+<input type="file" id="bgInput" accept="image/*" hidden />
+<script src="config.js"></script>
+<script src="sounds.js"></script>
+<script src="filter-words.js"></script>
+<script src="filter.js"></script>
+<script src="emoji.js"></script>
+<script src="icons.js"></script>
+<script src="app.js"></script>
+<script src="media.js"></script>
+<script src="extras.js"></script>
+<script src="safety.js"></script>
+<script src="browser.js"></script>
+<script src="supabase.js"></script>
+<script src="assistant.js"></script>
+</body>
+</html>
