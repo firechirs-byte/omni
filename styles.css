@@ -252,6 +252,7 @@ textarea.mini-input{height:auto;padding:8px 10px;resize:none;line-height:1.4}
 .msg-head{display:flex;align-items:baseline;gap:8px}
 .msg-head b{font-family:var(--font-head);font-size:.9rem;font-weight:700}
 .msg-head time,.chat-msg>time{color:var(--subtle);font-size:.7rem}
+.handle{color:var(--subtle);font-size:.75rem;font-weight:500}   /* @username next to a name */
 .chat-msg span.msg-text{display:block;font-size:.93rem;word-wrap:break-word;white-space:pre-wrap}
 #chatList .chat-msg{padding:6px 4px;column-gap:8px}
 #chatList .chat-msg>.avatar{width:26px;height:26px;font-size:.62rem}

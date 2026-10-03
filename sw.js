@@ -4,7 +4,7 @@
    Releasing a new version? Change CACHE below (and APP_VERSION in app.js).
    Browsers spot that sw.js changed, download everything again, and Omni
    shows the "Update available" banner. */
-const CACHE = 'omni-v4.1.0';
+const CACHE = 'omni-v4.2.0';
 const FILES = [
   './', 'index.html', 'styles.css', 'manifest.webmanifest', 'icon.svg',
   'config.js', 'sounds.js', 'filter-words.js', 'filter.js', 'emoji.js', 'icons.js', 'app.js', 'media.js',

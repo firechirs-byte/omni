@@ -19,6 +19,7 @@
    Where things are stored (Cloud Firestore):
      profiles/{you}             your name, status, picture (only you read it)
      private/{you}              email, birth year, parent email, friend code (only you)
+     usernames/{name}           @username → who it belongs to (unique)
      friendCodes/{code}         friend code → who it belongs to
      inviteCodes/{code}         invite code → which chat
      chats/{id}                 a group chat or DM, with its list of members
@@ -107,21 +108,34 @@ const Online = (() => {
     return [...r].map(n => abc[n % abc.length]).join('');
   }
   const cleanCode = v => String(v || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+  // usernames: 3–20 characters, a-z 0-9 _ . , starting with a letter (same rule as firestore.rules)
+  const cleanUsername = v => String(v || '').trim().replace(/^@/, '').toLowerCase();
+  function usernameProblem(u) {
+    if (!/^[a-z][a-z0-9_.]{2,19}$/.test(u)) return 'Usernames are 3–20 characters: lowercase letters, numbers, _ and . , starting with a letter.';
+    const f = Filter.apply(u, 'name');
+    if (!f.ok || f.changed) return 'That username has a word the family filter doesn\'t allow. Please pick another.';
+    return '';
+  }
+  async function usernameFree(u) { return !(await F.getDoc(ref('usernames', u))).exists(); }
 
   /* ---------- accounts ---------- */
-  async function signUp({ email, password, displayName, birthYear, parentEmail }) {
+  async function signUp({ email, password, displayName, username, birthYear, parentEmail }) {
     must();
+    username = cleanUsername(username);
+    const bad = usernameProblem(username); if (bad) throw new Error(bad);
     const year = new Date().getFullYear();
     const isMinor = birthYear > year - 19;            // same rule as firestore.rules
     signingUp = true;
     try {
       const cred = await F.createUserWithEmailAndPassword(auth, email, password).catch(e => { throw friendly(e); });
       user = cred.user;
+      if (!(await usernameFree(username))) { await user.delete().catch(() => {}); user = null; throw new Error('Sorry, @' + username + ' is taken. Try another username.'); }
       // public profile + private details + friend code, saved together (all or nothing)
       let lastErr;
       for (let tries = 0; tries < 3; tries++) {
         const code = makeCode(), b = F.writeBatch(db);
-        b.set(ref('profiles', user.uid), { name: displayName.slice(0, 24), status: '', avatar: okAvatar(myAvatar), updatedAt: F.serverTimestamp() });
+        b.set(ref('profiles', user.uid), { name: displayName.slice(0, 24), status: '', avatar: okAvatar(myAvatar), username, updatedAt: F.serverTimestamp() });
+        b.set(ref('usernames', username), { uid: user.uid });     // reserves the username in the same save
         b.set(ref('private', user.uid), { email: user.email, birthYear, isMinor, parentEmail: isMinor ? parentEmail : (parentEmail || ''), friendCode: code, createdAt: F.serverTimestamp() });
         b.set(ref('friendCodes', code), { uid: user.uid });
         try { await b.commit(); lastErr = null; break; } catch (e) { lastErr = e; }   // (a taken friend code fails: try another)
@@ -146,6 +160,7 @@ const Online = (() => {
       if (profile.avatar && !myAvatar) { myAvatar = profile.avatar; store(AVATAR_KEY, myAvatar); }
       else if (myAvatar && !profile.avatar) avatarChanged(myAvatar);
       listenChats();
+      if (!profile.username) askUsernameOnce();
     } catch (err) { console.warn('Omni online:', err.message); toast('Online: ' + friendly(err).message, 5000); }
     updateChip(); renderAll();
   }
@@ -162,11 +177,11 @@ const Online = (() => {
   /* ---------- profiles ---------- */
   // only small image data URLs are allowed online (firestore.rules checks this too)
   const okAvatar = url => (url && /^data:image\/(webp|jpeg|png);base64,/.test(url) && url.length <= 120000) ? url : '';
-  function myCard() { return { name: (settings.name || 'Me').slice(0, 24), status: (settings.status || '').slice(0, 40), avatar: okAvatar(myAvatar) }; }
+  function myCard() { return { name: (settings.name || 'Me').slice(0, 24), status: (settings.status || '').slice(0, 40), avatar: okAvatar(myAvatar), username: profile?.username || '' }; }
   async function saveProfile() {
     must();
-    const card = myCard();
-    await F.setDoc(ref('profiles', uid()), { ...card, updatedAt: F.serverTimestamp() });
+    const card = myCard(), { username, ...pub } = card;
+    await F.setDoc(ref('profiles', uid()), { ...pub, ...(username ? { username } : {}), updatedAt: F.serverTimestamp() });
     Object.assign(profile || {}, card, { display_name: card.name });
     // copy your public card into every chat you're in, so chat-mates see the change
     const b = F.writeBatch(db); let n = 0;
@@ -190,6 +205,28 @@ const Online = (() => {
     const card = have.exists() ? have.data() : { ...myCard(), code: '', joinedAt: F.serverTimestamp() };
     if (!have.exists()) await F.setDoc(r, card);
     (OL.cards[id] ||= {})[uid()] = card;
+  }
+
+  // Accounts made before usernames existed: ask once (Settings → Online account can do it later)
+  function askUsernameOnce() {
+    const key = 'omni_v4_asked_username_' + uid();
+    if (localStorage.getItem(key)) return;
+    localStorage.setItem(key, '1');
+    setTimeout(() => typeof pickUsername === 'function' && pickUsername(), 600);
+  }
+  async function setUsername(input) {
+    must();
+    const u = cleanUsername(input), bad = usernameProblem(u);
+    if (bad) throw new Error(bad);
+    if (profile?.username) throw new Error('You already have @' + profile.username + '.');
+    if (!(await usernameFree(u))) throw new Error('Sorry, @' + u + ' is taken. Try another username.');
+    const b = F.writeBatch(db);
+    b.set(ref('usernames', u), { uid: uid() });
+    b.update(ref('profiles', uid()), { username: u, updatedAt: F.serverTimestamp() });
+    Object.keys(OL.channels).forEach(id => { if (OL.cards[id]?.[uid()]) b.update(ref('chats', id, 'members', uid()), { username: u }); });
+    await b.commit().catch(e => { throw /permission/i.test(e.code || '') ? new Error('Sorry, @' + u + ' is taken. Try another username.') : friendly(e); });
+    profile.username = u; updateChip();
+    return u;
   }
 
   /* ---------- live updates: your chats, their members and messages ---------- */
@@ -222,7 +259,7 @@ const Online = (() => {
       OL.cards[id] = {};
       snap.forEach(d => {
         const m = d.data(); OL.cards[id][d.id] = m;
-        OL.people[d.id] = { display_name: m.name, avatar_url: m.avatar || '', status: m.status || '' };
+        OL.people[d.id] = { display_name: m.name, avatar_url: m.avatar || '', status: m.status || '', username: m.username || '' };
       });
       if (!OL.cards[id][uid()] && !snap.metadata.fromCache) ensureCard(id).catch(e => console.warn('Omni online: card', e.code || e.message));
       attach(); renderChat(); renderDMs();
@@ -367,20 +404,23 @@ const Online = (() => {
     await b.commit().catch(e => { throw friendly(e); });
     return chatReady(id);
   }
+  // start a DM with a friend code, or an exact @username (no searching: it must match exactly)
   async function startDM(input) {
     must();
-    const code = cleanCode(input);
-    if (code.length !== 8) throw new Error('Friend codes are 8 letters/numbers.');
-    const fc = await F.getDoc(ref('friendCodes', code));
-    if (!fc.exists()) throw new Error('Nobody has that friend code. Check it with your friend.');
+    const byName = String(input || '').trim().startsWith('@');
+    const code = byName ? cleanUsername(input) : cleanCode(input);
+    if (byName && usernameProblem(code)) throw new Error('That isn\'t a valid @username.');
+    if (!byName && code.length !== 8) throw new Error('Friend codes are 8 letters/numbers (or type @username).');
+    const fc = await F.getDoc(ref(byName ? 'usernames' : 'friendCodes', code));
+    if (!fc.exists()) throw new Error(byName ? 'Nobody has the username @' + code + '.' : 'Nobody has that friend code. Check it with your friend.');
     const other = fc.data().uid;
-    if (other === uid()) throw new Error('That\'s your own friend code!');
+    if (other === uid()) throw new Error('That\'s you!');
     const id = uid() < other ? `dm_${uid()}_${other}` : `dm_${other}_${uid()}`;
     if (OL.channels[id]) return OL.channels[id];
     const existing = await F.getDoc(ref('chats', id));
     if (!existing.exists()) {
       const b = F.writeBatch(db);
-      b.set(ref('chats', id), { kind: 'dm', createdBy: uid(), createdAt: F.serverTimestamp(), memberIds: [uid(), other], friendCode: code });
+      b.set(ref('chats', id), { kind: 'dm', createdBy: uid(), createdAt: F.serverTimestamp(), memberIds: [uid(), other], ...(byName ? { username: code } : { friendCode: code }) });
       b.set(ref('chats', id, 'members', uid()), { ...myCard(), code: '', joinedAt: F.serverTimestamp() });
       await b.commit().catch(e => { throw friendly(e); });
     }
@@ -396,10 +436,12 @@ const Online = (() => {
 
   function topicFor() {
     const ch = current(); if (!ch) return '';
-    return ch.kind === 'dm' ? 'Direct message · online · only you two can read it'
+    const p = ch.kind === 'dm' ? partner(ch) : null;
+    return ch.kind === 'dm' ? `Direct message${p?.username ? ' with @' + p.username : ''} · online · only you two can read it`
       : `Online chat · invite code ${ch.invite_code} · ${(OL.members[ch.id] || []).length} member(s) · only members can read it`;
   }
   const avatarOf = id => OL.people[id]?.avatar_url || '';
+  const usernameOf = id => (id === uid() ? profile?.username : OL.people[id]?.username) || '';
   const ready = () => !!(F && state === 'ready' && uid());
 
   function updateChip() {
@@ -413,7 +455,7 @@ const Online = (() => {
   }
 
   return {
-    configured, init, signUp, signIn, resetPassword, signOut, token, saveProfile, avatarChanged, profileChanged, attach, current, topicFor, avatarOf,
+    configured, init, signUp, setUsername, usernameOf, signIn, resetPassword, signOut, token, saveProfile, avatarChanged, profileChanged, attach, current, topicFor, avatarOf,
     createChat, joinChat, startDM, leaveChat, sent, edited, deleted, updateChip, SERVER,
     get ready() { return ready(); }, get state() { return state; }, get problem() { return problem; },
     get email() { return user?.email || ''; }, get profile() { return profile; }, get chats() { return Object.values(OL.channels); }
@@ -438,7 +480,7 @@ function onlineCardHTML() {
   }
   if (Online.ready) {
     const chats = Online.chats.filter(c => c.kind === 'group');
-    return `<div class="modal-card wide">${head()}<span>Signed in as <b>${esc(Online.profile?.display_name || Online.email)}</b> (${esc(Online.email)}).</span>` +
+    return `<div class="modal-card wide">${head()}<span>Signed in as <b>${esc(Online.profile?.display_name || Online.email)}</b> ${Online.profile?.username ? '<span class="handle">@' + esc(Online.profile.username) + '</span>' : '<button class="close" id="olPickName">Pick a username</button>'} (${esc(Online.email)}).</span>` +
       `<span>Your friend code: <b class="code">${esc(Online.profile?.friend_code || '…')}</b> <button class="close" id="olCopyCode">${icon('copy')} Copy</button><br>` +
       `Only give it to people you know in real life: it lets them send you direct messages.</span>` +
       `<div class="row"><span class="row-left"><button class="confirm" id="olNewChat">${icon('plus')} New online chat</button><button class="close" id="olJoin">${icon('link')} Join with code</button>` +
@@ -464,6 +506,7 @@ function bindOnline() {
   on('#olOut', () => run(() => Online.signOut()));
   on('#olNew', openSignUp);
   on('#olCopyCode', () => navigator.clipboard?.writeText(Online.profile?.friend_code || '').then(() => toast('Friend code copied')));
+  on('#olPickName', () => { closeModal(); pickUsername(); });
   on('#olNewChat', () => { closeModal(); onlineAsk('new'); });
   on('#olJoin', () => { closeModal(); onlineAsk('join'); });
   on('#olDM', () => { closeModal(); onlineAsk('dm'); });
@@ -473,7 +516,7 @@ function bindOnline() {
 function onlineAsk(kind) {
   const t = { new: ['New online chat', 'Friends join it with its invite code.', 'chat-name', 'Create'],
     join: ['Join an online chat', 'Type the invite code a friend gave you.', 'Invite code (8 letters/numbers)', 'Join'],
-    dm: ['Message a friend', 'Type your friend\'s friend code. They can find theirs in Settings → Online account.', 'Friend code', 'Start chatting'] }[kind];
+    dm: ['Message a friend', 'Type your friend\'s friend code, or their exact @username. They can find both in Settings → Online account.', 'Friend code or @username', 'Start chatting'] }[kind];
   modal(t[0], t[1], `<div class="modal-card wide"><input id="olAsk" class="modal-input" placeholder="${t[2]}" maxlength="32" autocomplete="off"><span class="form-error" id="olAskErr"></span></div>`, async () => {
     const v = $('#olAsk').value.trim(); if (!v) return false;
     const fail = e => { $('#olAskErr').textContent = e.message || String(e); return false; };
@@ -496,6 +539,7 @@ function openSignUp() {
   const year = new Date().getFullYear();
   modal('Create an Omni account', 'Kids under 18 need a parent or guardian email, so a grown-up knows about the account. Your email, birth year and parent email are private: only you can see them.',
     `<div class="modal-card"><b>Display name</b><input class="modal-input" id="suName" maxlength="24" value="${esc(settings.name)}"></div>` +
+    `<div class="modal-card"><b>Username (unique)</b><input class="modal-input" id="suUser" maxlength="21" placeholder="e.g. keagan_14" autocomplete="username"><span class="handle">3–20: a-z, 0-9, _ and . (start with a letter). Display names don't have to be unique.</span></div>` +
     `<div class="modal-card"><b>Email</b><input class="modal-input" id="suEmail" type="email" autocomplete="email"></div>` +
     `<div class="modal-card"><b>Password (8+ characters)</b><input class="modal-input" id="suPass" type="password" autocomplete="new-password"></div>` +
     `<div class="modal-card"><b>Year you were born</b><input class="modal-input" id="suYear" type="number" min="1900" max="${year}" placeholder="e.g. ${year - 14}"></div>` +
@@ -503,6 +547,8 @@ function openSignUp() {
     `<div class="modal-card wide"><span class="form-error" id="suErr"></span></div>`, async () => {
       const err = m => { $('#suErr').textContent = m; return false; };
       const name = $('#suName').value.trim(), email = $('#suEmail').value.trim(), pass = $('#suPass').value;
+      const username = $('#suUser').value.trim().replace(/^@/, '').toLowerCase();
+      if (!/^[a-z][a-z0-9_.]{2,19}$/.test(username)) return err('Usernames are 3–20 characters: lowercase letters, numbers, _ and . , starting with a letter.');
       const by = parseInt($('#suYear').value, 10), parent = $('#suParent').value.trim();
       const minor = by > year - 19;      // born in the last 18 years counts as under 18 (same as the server rules)
       if (!name || guard(name, 'name') === null) return err('Please choose a friendly display name.');
@@ -510,10 +556,19 @@ function openSignUp() {
       if (pass.length < 8) return err('The password needs at least 8 characters.');
       if (!(by >= 1900 && by <= year)) return err('Please enter the year you were born.');
       if (minor && !/^\S+@\S+\.\S+$/.test(parent)) return err('You\'re under 18, so please add a parent or guardian email.');
-      try { await Online.init(); await Online.signUp({ email, password: pass, displayName: name, birthYear: by, parentEmail: parent }); }
+      try { await Online.init(); await Online.signUp({ email, password: pass, displayName: name, username, birthYear: by, parentEmail: parent }); }
       catch (e) { return err(e.message || String(e)); }
       toast('Account created and signed in', 5000);
     }, 'Create account');
+}
+// Pick a username (new accounts do this at sign-up; older accounts are asked once)
+function pickUsername() {
+  modal('Pick a username', 'Usernames are unique, so friends can find the right you. Your display name can stay the same as anyone else\'s.',
+    `<div class="modal-card wide"><input id="unInput" class="modal-input" maxlength="21" placeholder="@username" autocomplete="off">` +
+    `<span class="handle">3–20 characters: a-z, 0-9, _ and . , starting with a letter.</span><span class="form-error" id="unErr"></span></div>`, async () => {
+      try { const u = await Online.setUsername($('#unInput').value); toast('You are now @' + u, 4000); renderAll(); }
+      catch (e) { $('#unErr').textContent = e.message || String(e); return false; }
+    }, 'Save username');
 }
 $('#onlineChip').onclick = () => {
   if (Online.configured) {

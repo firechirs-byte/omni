@@ -23,7 +23,7 @@
 
 /* Omni's version number. When you release a change, bump this AND the
    CACHE name in sw.js, so everyone gets the "Update available" banner. */
-const APP_VERSION = '4.1.0';
+const APP_VERSION = '4.2.0';
 
 /* The app's name lives in ONE place: APP_NAME in config.js. The page is written
    with "Omni"; named() swaps it for APP_NAME in the page, pop-ups and toasts. */
@@ -438,12 +438,17 @@ function msgHTML(m, i) {
     `<button class="rx ${who.includes('me') ? 'mine' : ''}" data-rx="${esc(e)}" data-i="${i}" title="${who.includes('me') ? 'You reacted' : ''}">${e} ${who.length}</button>`).join('');
   const who = m.from || settings.name, mine = isMine(m);
   return `<div class="chat-msg ${mine ? 'me' : 'them'}" data-i="${i}" tabindex="0" title="Right-click (or long-press) for options">` +
-    `<span class="avatar">${avatarHTML(who, { me: mine, url: m.uid && typeof Online !== 'undefined' ? Online.avatarOf(m.uid) : '' })}</span><div class="msg-head"><b>${esc(who)}</b><time>${time}${m.edited ? ' (edited)' : ''}</time></div>` +
+    `<span class="avatar">${avatarHTML(who, { me: mine, url: m.uid && typeof Online !== 'undefined' ? Online.avatarOf(m.uid) : '' })}</span><div class="msg-head"><b>${esc(who)}</b>${handleHTML(m)}<time>${time}${m.edited ? ' (edited)' : ''}</time></div>` +
     `${fwd}${gif}${text}` + (rx ? `<div class="rx-row">${rx}</div>` : '') + `</div>`;
 }
 
 /* The family word filter (filter.js) checks text before it's saved.
    Returns the text to use, or null if it was blocked. kind 'name' is for names. */
+// "@username" after the name on online messages (display names can repeat; usernames can't)
+function handleHTML(m) {
+  const u = m.uid && typeof Online !== 'undefined' && Online.usernameOf ? Online.usernameOf(m.uid) : '';
+  return u ? `<span class="handle">@${esc(u)}</span>` : '';
+}
 function guard(text, kind = 'message') {
   const r = Filter.apply(text, kind);
   if (!r.ok) { filterWarning(kind); return null; }

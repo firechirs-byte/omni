@@ -178,7 +178,10 @@ Go to **Settings → Safety** (or the shield button) → **Family word filter**.
 
 **Forgot PIN:** type `RESET` to wipe the filter settings on this device. This is a **device-only** filter until Omni has real accounts and a server. A determined person could reset it or clear the browser data, and Omni can't really check anyone's age (it's an honour system).
 
-## 8. New in v4.1: Firebase
+## 8. New in v4.2: unique @usernames (and v4.1: Firebase)
+
+v4.2: every online account has a unique **@username** (see section 9, step 3); display names stay free-form.
+
 
 Omni's online mode now uses **Firebase** instead of Supabase (section 9): its own project `omni-chat-kb26`, email + password accounts, group chats with invite codes, DMs with friend codes, live messages, and pictures shared only with chat-mates. Everything you could do in v4.0 still works.
 
@@ -208,7 +211,8 @@ Omni checks all this when it starts; the chip at the bottom left tells you what'
 2. **Make accounts.** In Omni: the chip or *Settings → Online account → Create account…*. Everyone gives their birth year; anyone under 18 must give a parent/guardian email. The email, birth year and parent email go into a **private** record that only that person can read (`private/{uid}`), and the rules refuse an under-18 account without a parent email. "Forgot password?" emails a reset link.
 3. **Chat.** *Settings → Online account*:
    - **New online chat** creates a group chat with an **invite code**. It appears under the globe server in the left rail. Give the code to friends in real life; they press **Join with code**.
-   - **Message a friend** starts a direct message using your friend's **friend code** (each person's is in their Settings). Nobody can search for you, so only people you give your code to can DM you.
+   - **Usernames:** everyone picks a unique **@username** at sign-up (3–20 characters: a-z, 0-9, `_` and `.`, starting with a letter, checked by the family filter). Display names can be anything and can repeat; the @username next to them shows who's who. Accounts made before v4.2 are asked once to pick one (or use *Settings → Online account → Pick a username*). Each username is reserved in `usernames/{name}`; the rules only let the first person take it, and only they can let it go.
+   - **Message a friend** starts a direct message using your friend's **friend code** or their exact **@username** (each person's are in their Settings). There's no search or list of people, so you have to know the exact code or name.
    - Messages, edits and deletes appear live for everyone in the chat. Only the person who wrote a message can edit or delete it.
    - Your name, status and profile picture are shared **only with people in your chats** (each chat keeps a small "member card" for everyone in it). Pictures are stored as small images inside Firestore, so Omni doesn't need Cloud Storage (which needs the paid Blaze plan on new projects).
    - Your local servers, local DMs and notes stay on your device, just like before.

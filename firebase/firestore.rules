@@ -7,6 +7,7 @@ rules_version = '2';
 //  What's stored (see README → "Going online with Firebase"):
 //    profiles/{uid}        your public card: name, status, picture   (only YOU read it)
 //    private/{uid}         email, birth year, parent email, friend code (only YOU)
+//    usernames/{name}      @username → user id (unique; exact look-up only, no listing)
 //    friendCodes/{code}    friend code → user id  (look up one code at a time, no listing)
 //    inviteCodes/{code}    invite code → chat id  (look up one code at a time, no listing)
 //    chats/{chatId}        a group chat or a DM: name, members
@@ -30,14 +31,18 @@ service cloud.firestore {
     // pictures are small data URLs (a 256px WebP is about 3–20 KB); never a link to anywhere else
     function validAvatar(a) { return a is string && a.size() <= 120000 && (a == '' || a.matches('data:image/(webp|jpeg|png);base64,[A-Za-z0-9+/=]+')); }
     function validEmail(e) { return e is string && e.size() <= 254 && e.matches('[^@ ]+@[^@ ]+[.][^@ ]+'); }
+    // usernames: 3–20 characters, lowercase letters, numbers, _ and . , starting with a letter
+    function validUsername(u) { return u is string && u.matches('[a-z][a-z0-9_.]{2,19}'); }
+    function ownsUsername(u) { return validUsername(u) && getAfter(/databases/$(database)/documents/usernames/$(u)).data.uid == me(); }
     function changed() { return request.resource.data.diff(resource.data).affectedKeys(); }
     // a DM's id is always "dm_<smaller uid>_<bigger uid>", so two people only ever get one DM
     function dmId(a, b) { return a < b ? 'dm_' + a + '_' + b : 'dm_' + b + '_' + a; }
 
     // ---------- your public profile (your own copy, used to sync devices) ----------
     function validProfile(d) {
-      return d.keys().hasOnly(['name', 'status', 'avatar', 'updatedAt'])
+      return d.keys().hasOnly(['name', 'status', 'avatar', 'username', 'updatedAt'])
         && validName(d.name) && validStatus(d.get('status', '')) && validAvatar(d.get('avatar', ''))
+        && (!('username' in d) || ownsUsername(d.username))       // only a username you reserved
         && d.updatedAt == request.time;
     }
     match /profiles/{uid} {
@@ -62,6 +67,19 @@ service cloud.firestore {
       // you can fix your parent email, but not change your birth year, age or friend code
       allow update: if signedIn() && me() == uid && validPrivate(request.resource.data)
         && changed().hasOnly(['parentEmail', 'email']);
+    }
+
+    // ---------- usernames: unique, first come first served ----------
+    // "create" only works if nobody has the name yet (writing over it would be an update,
+    // which is never allowed). Your profile must point at it in the same save.
+    match /usernames/{name} {
+      allow get: if signedIn();                       // exact @username look-up only
+      allow list: if false;                           // no browsing / searching
+      allow create: if signedIn() && validUsername(name)
+        && request.resource.data.keys().hasOnly(['uid']) && request.resource.data.uid == me()
+        && getAfter(/databases/$(database)/documents/profiles/$(me())).data.get('username', '') == name;
+      allow update: if false;
+      allow delete: if signedIn() && resource.data.uid == me();
     }
 
     // ---------- friend codes: knowing the code is what lets someone DM you ----------
@@ -94,11 +112,14 @@ service cloud.firestore {
         && getAfter(/databases/$(database)/documents/inviteCodes/$(d.inviteCode)).data.chatId == chatId;
     }
     function validDM(chatId, d) {
-      return d.keys().hasOnly(['kind', 'createdBy', 'createdAt', 'memberIds', 'friendCode'])
+      return d.keys().hasOnly(['kind', 'createdBy', 'createdAt', 'memberIds', 'friendCode', 'username'])
         && d.kind == 'dm' && d.createdBy == me() && d.createdAt == request.time
         && d.memberIds.size() == 2 && d.memberIds[0] == me() && d.memberIds[1] != me()
-        && code8(d.friendCode)
-        && get(/databases/$(database)/documents/friendCodes/$(d.friendCode)).data.uid == d.memberIds[1]
+        // you need their friend code OR their exact @username
+        && (('friendCode' in d && code8(d.friendCode)
+              && get(/databases/$(database)/documents/friendCodes/$(d.friendCode)).data.uid == d.memberIds[1])
+            || ('username' in d && validUsername(d.username)
+              && get(/databases/$(database)/documents/usernames/$(d.username)).data.uid == d.memberIds[1]))
         && chatId == dmId(me(), d.memberIds[1]);
     }
     match /chats/{chatId} {
@@ -121,8 +142,9 @@ service cloud.firestore {
 
       // ---- member cards: public name/status/picture, written only by that person ----
       function validCard(d) {
-        return d.keys().hasOnly(['name', 'status', 'avatar', 'code', 'joinedAt'])
-          && validName(d.name) && validStatus(d.get('status', '')) && validAvatar(d.get('avatar', ''));
+        return d.keys().hasOnly(['name', 'status', 'avatar', 'username', 'code', 'joinedAt'])
+          && validName(d.name) && validStatus(d.get('status', '')) && validAvatar(d.get('avatar', ''))
+          && (!('username' in d) || d.username == '' || ownsUsername(d.username));
       }
       match /members/{uid} {
         allow read: if isMember(chatId);
@@ -132,7 +154,7 @@ service cloud.firestore {
           && (getAfter(chatPath(chatId)).data.kind == 'dm'
               || request.resource.data.code == getAfter(chatPath(chatId)).data.inviteCode);
         allow update: if signedIn() && me() == uid && validCard(request.resource.data)
-          && changed().hasOnly(['name', 'status', 'avatar']) && isMember(chatId);
+          && changed().hasOnly(['name', 'status', 'avatar', 'username']) && isMember(chatId);
         allow delete: if signedIn() && me() == uid;
       }
 
