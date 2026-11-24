@@ -483,6 +483,15 @@ body.chat-bubbles .chat-msg.me .rx{background:rgba(255,255,255,.88);color:#1a213
 .welcome-row input:focus{border-color:#c6f432}
 .welcome .confirm.big{clip-path:none;height:44px;padding:0 22px;font-size:15px;background:#c6f432;color:#15171a;border-radius:8px}
 .welcome-note{color:#8d8b84;font-size:12.5px;margin-top:20px}
+body.desktop-locked .app{pointer-events:none}
+.desktop-gate{display:none}
+body.desktop-locked .desktop-gate{position:fixed;inset:0;z-index:120;display:grid;place-items:center;background:#15171a;color:#eceae4;padding:24px;font-family:"Inter",system-ui,sans-serif}
+.desktop-gate-card{width:min(420px,100%)}
+.desktop-gate-card h1{margin:0 0 8px;font-size:36px;font-family:"Space Grotesk",sans-serif}
+.desktop-gate-card p{color:#a7a59d;margin:0 0 8px}
+.desktop-gate-card label{display:block;margin-top:12px;font-size:12px;color:#a7a59d}
+.desktop-gate-card input{display:block;width:100%;margin-top:5px;height:44px;background:#1d2024;border:1px solid #33373d;border-radius:8px;padding:0 12px;color:#fff;outline:none}
+.desktop-gate-card .confirm.big{margin-top:16px}
 
 /* ---------- 13. Mode personalities ---------- */
 /* GAMING — dark, sharp, cut corners, mono labels, a hint of scanlines */

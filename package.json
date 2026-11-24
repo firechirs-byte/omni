@@ -1,14 +1,14 @@
 {
   "name": "omni",
   "productName": "Omni",
-  "version": "4.3.1",
+  "version": "4.3.2",
   "private": true,
   "description": "Omni desktop shell. The website in this folder stays the GitHub Pages app.",
   "main": "desktop/main.js",
   "author": "Omni",
   "scripts": {
     "start": "electron .",
-    "test": "node --test desktop/policy.test.js desktop/cues.test.js",
+    "test": "node --test desktop/policy.test.js desktop/cues.test.js desktop/auth-gate.test.js desktop/updates.test.js",
     "smoke": "electron . --omni-self-test",
     "pack:win": "electron-builder --win nsis portable --x64",
     "pack:win:zip": "electron-builder --win zip --x64"
@@ -39,7 +39,9 @@
       "gifs/**",
       "desktop/main.js",
       "desktop/policy.js",
-      "desktop/picker-preload.js"
+      "desktop/picker-preload.js",
+      "desktop/updates.js",
+      "desktop/update-config.json"
     ],
     "win": {
       "target": [
@@ -56,6 +58,7 @@
           ]
         }
       ],
+      "executableName": "Omni",
       "icon": "icons/icon-512.png",
       "signAndEditExecutable": true,
       "verifyUpdateCodeSignature": false

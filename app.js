@@ -23,7 +23,7 @@
 
 /* Omni's version number. When you release a change, bump this AND the
    CACHE name in sw.js, so everyone gets the "Update available" banner. */
-const APP_VERSION = '4.3.1';
+const APP_VERSION = '4.3.2';
 /* Set by the Windows shell (desktop/main.js). The website never sends this. */
 const DESKTOP = /\bOmniDesktop\//.test(navigator.userAgent);
 const PUBLIC_WEB_URL = 'https://firechirs-byte.github.io/omni/';
@@ -1063,7 +1063,7 @@ $('#updateNow').onclick = () => {
 };
 
 async function checkForUpdate() {
-  if (DESKTOP) return toast('This Windows app updates when a newer Omni build is installed. Online chat still needs internet.', 4500);
+  if (DESKTOP) return toast('Omni does not download updates by itself yet. Replace the files in this same Omni folder when you have a newer copy. Your sign-in stays on this Windows profile.', 5000);
   if (!swReg) return toast('Updates need Omni to be opened from https:// or localhost', 3500);
   if (waitingWorker) return showUpdateBanner(waitingWorker);
   toast('Checking for updates…');
@@ -1103,4 +1103,5 @@ if (updatedFrom) {
 /* ---------- Start! ---------- */
 applyAppName();   // "Omni" → APP_NAME from config.js
 applyTheme(); renderAll(); resetCallChrome();
-if (!settings.welcomed) showWelcome();
+if (DESKTOP) { const w = $('#welcome'); if (w) w.classList.remove('show'); }
+else if (!settings.welcomed) showWelcome();

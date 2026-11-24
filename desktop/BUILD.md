@@ -50,6 +50,7 @@ These are facts for the 4.3.0 packaging run, not a Windows QA pass:
 - `npm run smoke` launches Electron against the local files when this environment can open a window. It checks that the page origin is `omni://app`, that `require` and `process` are absent in the page, and that an `https` pop-up is handed outward while a `file:` pop-up is not. It does not sign in to Firebase and it is not a Windows run.
 - The 4.3.0 zip from the first packaging run is `dist/Omni-4.3.0-win.zip` (153,761,129 bytes, sha256 `2dea4526f21d29b418003039408c34c6fd85c789a6ee531ea0f7d9fdead1db71`).
 - v4.3.1 is the lounge-leave and quieter-sound patch. Its zip is `dist/Omni-4.3.1-win.zip` (153,762,484 bytes, sha256 `b334c1bd053d52a80b218ea8dbcd8d38028251801c26fe79c29544264481bc13`). Unzip it and run `Omni.exe`. It is not the NSIS installer and not the one-file portable exe.
+- v4.3.2 keeps the program file named `Omni.exe` (no version in the name) and the same `%APPDATA%\Omni` profile. Its zip is `dist/Omni-4.3.2-win.zip` (153,765,357 bytes, sha256 `653a56588861ead3208d873ceb8f5d01f0f2357002cd72b66766484ec5803d0a`). Automatic updates are not switched on.
 
 ## Behaviour notes
 

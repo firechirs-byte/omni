@@ -75,7 +75,17 @@ const Online = (() => {
       const fbApp = F.initializeApp(fbc);
       auth = F.getAuth(fbApp);
       db = F.getFirestore(fbApp);
+      const desktop = typeof DESKTOP !== 'undefined' && DESKTOP;
+      if (desktop && F.setPersistence && F.browserLocalPersistence) await F.setPersistence(auth, F.browserLocalPersistence);
       await auth.authStateReady();
+      if (desktop && auth.currentUser) {
+        try { await auth.currentUser.getIdToken(true); }
+        catch (e) {
+          const fatal = ['auth/user-token-expired', 'auth/user-disabled', 'auth/invalid-user-token', 'auth/user-not-found'];
+          if (fatal.includes(e?.code)) await F.signOut(auth).catch(() => {});
+        }
+      }
+      if (desktop) F.onAuthStateChanged(auth, onUser);
       // Is the database there, and do the rules work? Asking for a code that doesn't
       // exist should answer "not found" (signed in) or "permission denied" (signed out).
       await withTimeout(F.getDoc(F.doc(db, 'inviteCodes', 'PROBE000')), 12000);
@@ -88,12 +98,13 @@ const Online = (() => {
       else { state = 'offline'; problem = 'Could not reach Firebase (offline?).'; }
     }
     if (state !== 'ready') { console.warn('Omni online:', problem); updateChip(); return false; }
-    F.onAuthStateChanged(auth, u => {
-      const was = user?.uid || null; user = u;
-      if ((u?.uid || null) !== was && !signingUp) (u ? afterSignIn() : afterSignOut());
-    });
+    if (!(typeof DESKTOP !== 'undefined' && DESKTOP)) F.onAuthStateChanged(auth, onUser);
     if (!auth.currentUser) updateChip();
     return true;
+  }
+  function onUser(u) {
+    const was = user?.uid || null; user = u;
+    if ((u?.uid || null) !== was && !signingUp) (u ? afterSignIn() : afterSignOut());
   }
   function withTimeout(p, ms) {
     return Promise.race([p, new Promise((_, no) => setTimeout(() => no(Object.assign(new Error('timeout'), { code: 'unavailable' })), ms))]);
@@ -163,11 +174,14 @@ const Online = (() => {
       if (!profile.username) askUsernameOnce();
     } catch (err) { console.warn('Omni online:', err.message); toast('Online: ' + friendly(err).message, 5000); }
     updateChip(); renderAll();
+    if (typeof DESKTOP !== 'undefined' && DESKTOP) desktopUnlock();
   }
   function afterSignOut() {
     stopAll(); profile = null;
     Object.keys(OL).forEach(k => OL[k] = {});
-    attach(); updateChip(); renderAll(); toast('Signed out. Online chats are hidden until you sign in again.', 3500);
+    attach(); updateChip(); renderAll();
+    if (typeof DESKTOP !== 'undefined' && DESKTOP) desktopShow('login');
+    else toast('Signed out. Online chats are hidden until you sign in again.', 3500);
   }
   function stopAll() {
     if (stopChats) { stopChats(); stopChats = null; }
@@ -457,7 +471,7 @@ const Online = (() => {
   return {
     configured, init, signUp, setUsername, usernameOf, signIn, resetPassword, signOut, token, saveProfile, avatarChanged, profileChanged, attach, current, topicFor, avatarOf,
     createChat, joinChat, startDM, leaveChat, sent, edited, deleted, updateChip, SERVER,
-    get ready() { return ready(); }, get state() { return state; }, get problem() { return problem; },
+    get ready() { return ready(); }, get signedIn() { return !!uid(); }, get state() { return state; }, get problem() { return problem; },
     get email() { return user?.email || ''; }, get profile() { return profile; }, get chats() { return Object.values(OL.channels); }
   };
 })();
@@ -588,4 +602,63 @@ document.addEventListener('click', e => {
   else if (e.target.closest('#addContactBtn') && data.server === Online.SERVER) { e.stopImmediatePropagation(); onlineAsk('dm'); }
 }, true);
 Online.updateChip();
-if (Online.configured) Online.init().catch(e => console.warn('Omni online:', e.message));
+if (typeof DESKTOP !== 'undefined' && DESKTOP) beginDesktopSession();
+else if (Online.configured) Online.init().catch(e => console.warn('Omni online:', e.message));
+
+function desktopDecision(authRestored) {
+  const offline = Online.state === 'offline';
+  const input = { desktop: true, authRestored, signedIn: !!Online.signedIn, offline };
+  return (typeof OmniAuthGate !== 'undefined' ? OmniAuthGate.decide(input) : { locked: !(authRestored && Online.signedIn), screen: !authRestored ? 'restoring' : (Online.signedIn ? 'app' : (offline ? 'offline' : 'login')) });
+}
+function desktopUnlock() {
+  document.body.classList.remove('desktop-locked');
+  const el = $('#desktopGate'); if (el) el.remove();
+}
+function paintDesktopGate(screen, detail) {
+  let el = $('#desktopGate');
+  if (!el) { el = document.createElement('div'); el.id = 'desktopGate'; el.className = 'desktop-gate'; document.body.appendChild(el); }
+  document.body.classList.add('desktop-locked');
+  const welcome = $('#welcome'); if (welcome) welcome.classList.remove('show');
+  el.dataset.screen = screen;
+  if (screen === 'restoring') {
+    el.innerHTML = '<div class="desktop-gate-card"><h1>Omni</h1><p>Checking your sign-in…</p></div>';
+    return;
+  }
+  if (screen === 'offline') {
+    el.innerHTML = `<div class="desktop-gate-card"><h1>Omni</h1><p>${esc(detail || 'The internet is needed the first time you sign in.')}</p><button class="confirm big" id="desktopRetry" type="button">Try again</button></div>`;
+    $('#desktopRetry').onclick = () => location.reload();
+    return;
+  }
+  el.innerHTML = `<div class="desktop-gate-card"><h1>Omni</h1><p>Sign in once with your email and password. This Windows app remembers you until you sign out.</p>` +
+    `<label>Email <input id="desktopEmail" type="email" autocomplete="username"></label>` +
+    `<label>Password <input id="desktopPass" type="password" autocomplete="current-password"></label>` +
+    `<p class="form-error" id="desktopErr"></p>` +
+    `<div class="welcome-row"><button class="confirm big" id="desktopIn" type="button">Sign in</button>` +
+    `<button class="close" id="desktopNew" type="button">Create account</button>` +
+    `<button class="close" id="desktopForgot" type="button">Forgot password?</button></div></div>`;
+  $('#desktopIn').onclick = async () => {
+    const email = $('#desktopEmail').value.trim();
+    const pass = $('#desktopPass').value;
+    $('#desktopPass').value = '';
+    try { await Online.init(); await Online.signIn(email, pass); }
+    catch (e) { if ($('#desktopErr')) $('#desktopErr').textContent = e.message || String(e); }
+  };
+  $('#desktopNew').onclick = () => openSignUp();
+  $('#desktopForgot').onclick = async () => {
+    const email = $('#desktopEmail').value.trim();
+    if (!/^\S+@\S+\.\S+$/.test(email)) { $('#desktopErr').textContent = 'Type your email first, then press Forgot password.'; return; }
+    try { await Online.init(); await Online.resetPassword(email); $('#desktopErr').textContent = 'If that email has an account, a reset link is on its way.'; }
+    catch (e) { $('#desktopErr').textContent = e.message || String(e); }
+  };
+}
+function desktopShow(screen, detail) {
+  const d = desktopDecision(screen !== 'restoring');
+  if (!d.locked) desktopUnlock();
+  else paintDesktopGate(d.screen === 'app' ? 'login' : d.screen, detail);
+}
+async function beginDesktopSession() {
+  paintDesktopGate('restoring');
+  try { await Online.init(); } catch (e) { console.warn('Omni online:', e.message); }
+  if (Online.signedIn) desktopUnlock();
+  else desktopShow(Online.state === 'offline' ? 'offline' : 'login', Online.problem);
+}

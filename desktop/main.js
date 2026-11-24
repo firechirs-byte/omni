@@ -7,6 +7,7 @@ const { app, BrowserWindow, Menu, desktopCapturer, ipcMain, protocol, session, s
 const fs = require('fs/promises');
 const path = require('path');
 const policy = require('./policy');
+const updates = require('./updates');
 
 const version = require('../package.json').version;
 const selfTest = process.argv.includes('--omni-self-test');
@@ -20,6 +21,7 @@ if (selfTest) {
 }
 
 app.userAgentFallback = `${app.userAgentFallback} OmniDesktop/${version}`;
+app.setAppUserModelId('io.github.firechirs-byte.omni');
 app.enableSandbox();
 
 protocol.registerSchemesAsPrivileged([{
@@ -308,6 +310,10 @@ function createWindow() {
     }
   });
   win.removeMenu();
+  win.on('page-title-updated', event => {
+    event.preventDefault();
+    win.setTitle('Omni');
+  });
   return win;
 }
 
@@ -351,6 +357,32 @@ async function runSelfTest(win) {
     app.exit(1);
     return;
   }
+  const authReport = await win.webContents.executeJavaScript(`(async () => {
+    const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+    const problems = [];
+    if (!document.body.classList.contains('desktop-locked')) problems.push('app was not locked while sign-in restores');
+    const welcome = document.getElementById('welcome');
+    if (welcome && welcome.classList.contains('show')) problems.push('guest welcome was the entry');
+    let screen = '';
+    for (let i = 0; i < 40; i++) {
+      const gate = document.getElementById('desktopGate');
+      screen = gate ? gate.dataset.screen || '' : '';
+      if (screen === 'login' || screen === 'offline') break;
+      if (!document.body.classList.contains('desktop-locked')) { problems.push('gate opened before a signed-in session'); break; }
+      await sleep(250);
+    }
+    if (document.body.classList.contains('desktop-locked') && screen !== 'login' && screen !== 'offline') problems.push('gate stayed on ' + (screen || 'missing'));
+    const storedPassword = Object.keys(localStorage).some(key => /password/i.test(key));
+    if (storedPassword) problems.push('a password was written to local storage');
+    return { problems, screen, locked: document.body.classList.contains('desktop-locked') };
+  })()`);
+  if (!authReport || authReport.problems.length || !authReport.locked) {
+    console.error(authReport && authReport.problems.length ? authReport.problems.join('\n') : 'auth gate did not stay locked');
+    app.exit(1);
+    return;
+  }
+  console.log('OMNI_AUTH_TEST_OK ' + authReport.screen);
+  await win.webContents.executeJavaScript(`document.body.classList.remove('desktop-locked'); const g = document.getElementById('desktopGate'); if (g) g.remove();`);
   const callProblems = await win.webContents.executeJavaScript(`(async () => {
     const sleep = (ms) => new Promise(r => setTimeout(r, ms));
     const pill = () => document.getElementById('livePill').textContent;
@@ -416,6 +448,8 @@ if (!gotLock) {
     win.focus();
   });
   app.whenReady().then(async () => {
+    const updateStatus = updates.checkOnLaunch();
+    if (updateStatus.willDownload) console.error('Omni refused an update download.');
     Menu.setApplicationMenu(null);
     protocol.handle('omni', async request => {
       if (request.method !== 'GET' && request.method !== 'HEAD') {
@@ -444,7 +478,7 @@ if (!gotLock) {
       const timer = setTimeout(() => {
         console.error('self-test timed out');
         app.exit(1);
-      }, 30000);
+      }, 45000);
       timer.unref?.();
       try {
         await runSelfTest(win);

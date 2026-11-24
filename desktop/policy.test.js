@@ -34,6 +34,7 @@ test('only the website files are readable', () => {
     '/opt/omni/fonts/inter.woff2'
   );
   assert.equal(policy.resolveAppFile(base, 'omni://app/gifs/wave.gif', path.posix), '/opt/omni/gifs/wave.gif');
+  assert.equal(policy.resolveAppFile(base, 'omni://app/auth-gate.js', path.posix), '/opt/omni/auth-gate.js');
   assert.equal(policy.resolveAppFile(base, 'omni://app/sw.js', path.posix), null);
   assert.equal(policy.resolveAppFile(base, 'omni://app/package.json', path.posix), null);
   assert.equal(policy.resolveAppFile(base, 'omni://app/desktop/main.js', path.posix), null);
