@@ -16,14 +16,17 @@ function currentUid() {
 function buildLobby() {
   const root = document.createElement('div');
   root.id = 'lobby';
+  const onMac = typeof navigator !== 'undefined' && /\bOmniOS\/Mac\b/.test(navigator.userAgent);
+  const place = onMac ? 'Mac' : 'Windows';
+  const profile = onMac ? 'Application Support/Omni for this Mac user' : 'this Windows profile';
   root.innerHTML = '<div class="lobby-shell"><header class="lobby-top"><div><p class="lobby-kicker">Omni</p><h1>Lobby</h1>' +
-    '<p class="lobby-lead">Signed in on this Windows app. Your chats stay in this profile.</p></div>' +
+    '<p class="lobby-lead">Signed in on this ' + place + '. Your chats stay in ' + profile + '.</p></div>' +
     '<div class="lobby-tabs" role="tablist"><button type="button" id="lobbyTabHome" role="tab">Lobby</button>' +
     '<button type="button" id="lobbyTabLinks" role="tab">Connections</button></div></header>' +
     '<div class="lobby-body"><div class="lobby-main">' +
     '<section id="lobbyHome"><div class="lobby-grid"><article class="lobby-jump"><h2>Jump in</h2>' +
     '<p>Open the modes, channels, and voice lounge.</p><button type="button" class="join-call" id="lobbyOpen">Open Omni</button></article>' +
-    '<article class="lobby-note"><h2>On this PC</h2><p>One Omni window. Sign-in stays in this Windows profile.</p>' +
+    '<article class="lobby-note"><h2>On this computer</h2><p>One Omni window. Sign-in stays in ' + profile + '.</p>' +
     '<button type="button" class="lobby-update" id="lobbyUpdate"></button><p id="lobbyUpdateDetail"></p></article></div></section>' +
     '<section id="lobbyLinks" hidden><p id="lobbyUnverified">Not verified. Omni does not check that you own these Minecraft or Roblox names.</p>' +
     '<div id="lobbyForms" class="lobby-grid"></div></section></div>' +

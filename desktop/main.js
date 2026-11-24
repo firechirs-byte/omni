@@ -20,7 +20,8 @@ if (selfTest) {
   app.commandLine.appendSwitch('use-fake-ui-for-media-stream');
 }
 
-app.userAgentFallback = `${app.userAgentFallback} OmniDesktop/${version}`;
+const osTag = process.platform === 'darwin' ? ' OmniOS/Mac' : process.platform === 'win32' ? ' OmniOS/Windows' : '';
+app.userAgentFallback = `${app.userAgentFallback} OmniDesktop/${version}${osTag}`;
 app.setAppUserModelId('io.github.firechirs-byte.omni');
 app.enableSandbox();
 

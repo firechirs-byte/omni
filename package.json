@@ -8,10 +8,11 @@
   "author": "Omni",
   "scripts": {
     "start": "electron .",
-    "test": "node --test desktop/policy.test.js desktop/cues.test.js desktop/auth-gate.test.js desktop/updates.test.js desktop/connections.test.js desktop/update-state.test.js desktop/download-offer.test.js",
+    "test": "node --test desktop/policy.test.js desktop/cues.test.js desktop/auth-gate.test.js desktop/updates.test.js desktop/connections.test.js desktop/update-state.test.js desktop/download-offer.test.js desktop/mac-config.test.js",
     "smoke": "electron . --omni-self-test",
     "pack:win": "electron-builder --win nsis portable --x64",
-    "pack:win:zip": "electron-builder --win zip --x64"
+    "pack:win:zip": "electron-builder --win zip --x64",
+    "pack:mac": "electron-builder --mac zip --arm64"
   },
   "devDependencies": {
     "electron": "45.4.1",
@@ -76,6 +77,25 @@
     },
     "portable": {
       "artifactName": "Omni-${version}-portable.exe"
+    },
+    "mac": {
+      "identity": null,
+      "category": "public.app-category.social-networking",
+      "icon": "icons/icon-512.png",
+      "artifactName": "Omni-${version}-mac-${arch}.${ext}",
+      "target": [
+        {
+          "target": "zip",
+          "arch": [
+            "arm64"
+          ]
+        }
+      ],
+      "extendInfo": {
+        "NSCameraUsageDescription": "Omni uses the camera only after you turn the camera on during a call.",
+        "NSMicrophoneUsageDescription": "Omni uses the microphone only after you join a call.",
+        "NSScreenCaptureUsageDescription": "Omni uses screen capture only after you press Share and pick a screen in Omni's own picker."
+      }
     }
   }
 }
