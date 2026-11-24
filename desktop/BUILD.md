@@ -56,7 +56,7 @@ These are facts for the 4.3.0 packaging run, not a Windows QA pass:
 - v4.3.5 restyles the lobby and adds `download.html`. Its zip is `dist/Omni-4.3.5-win.zip` (153,771,314 bytes, sha256 `598918cc68cbedd91ab0cf5429914e1e3c191b6be30a5ef77ce7c7b118e09fe9`).
 - The Apple Silicon test archive is `dist/Omni-4.3.5-mac-arm64.zip` (117,719,741 bytes, sha256 `5827cc409faa2b90cb09601946f293b317f00a86b2181e65e821949a6329457e`). It contains `Omni.app`, not a Windows exe. It is unsigned. No Mac launch was done here. Do not build a DMG on Linux.
 - v4.3.6 is the same Apple Silicon test app with the create-account dialog drawn above the login screen. Its zip is `dist/Omni-4.3.6-mac-arm64.zip` (117,720,108 bytes, sha256 `0dd4f11131f4c0be2dfc6fe770431498244447ff3271e7720abe76ee12d06fd8`). Product name stays Omni and the app id stays `io.github.firechirs-byte.omni`. electron-builder on Linux skipped macOS code signing (`supported only on macOS`). That zip is not a valid Mac development signature. No Mac launch was done here.
-- v4.3.7 is source only. The lobby states that this copy does not download or install updates, and the desktop paths say Lobby, Connections, Open Omni, and Back to Lobby. No 4.3.7 zip was packed.
+- v4.3.7 packed from commit `892885448d97d9b9b84152d3e955cf41804cdf35` is `dist/Omni-4.3.7-win.zip` (153,773,253 bytes, sha256 `b892e478dbbb7fdabcb470a8199cb6b0968028467e412f5ef728318119446a4e`) and `dist/Omni-4.3.7-mac-arm64.zip` (117,721,537 bytes, sha256 `c05b1414aec4b7504e6aa685f186f378b0390aadaacbe05154bb1ed8ae44e922`). The lobby says this copy does not download or install updates. The Windows file is an unpacked `Omni.exe` zip, not an installer. The Mac zip is unsigned. Automatic updates are still not implemented.
 
 ## Behaviour notes
 
