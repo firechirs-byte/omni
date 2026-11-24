@@ -382,7 +382,20 @@ async function runSelfTest(win) {
     return;
   }
   console.log('OMNI_AUTH_TEST_OK ' + authReport.screen);
-  await win.webContents.executeJavaScript(`document.body.classList.remove('desktop-locked'); const g = document.getElementById('desktopGate'); if (g) g.remove();`);
+  await win.webContents.executeJavaScript(`document.body.classList.remove('desktop-locked'); const g = document.getElementById('desktopGate'); if (g) g.remove(); showLobby();`);
+  const lobby = await win.webContents.executeJavaScript(`(() => ({
+    shown: document.body.classList.contains('show-lobby'),
+    update: (document.getElementById('lobbyUpdate') || {}).textContent || '',
+    note: (document.getElementById('lobbyUnverified') || {}).textContent || '',
+    games: [...document.querySelectorAll('#lobby [data-game]')].map(el => el.dataset.game)
+  }))()`);
+  if (!lobby.shown || lobby.update !== "Updates aren't set up" || !lobby.note.includes('Not verified') || lobby.games.join() !== 'minecraft,roblox') {
+    console.error('lobby ' + JSON.stringify(lobby));
+    app.exit(1);
+    return;
+  }
+  console.log('OMNI_LOBBY_DOM ' + JSON.stringify(lobby));
+  await win.webContents.executeJavaScript('hideLobby()');
   const shot = async (name) => {
     const image = await win.capturePage();
     await fs.writeFile('/tmp/omni-' + name + '.png', image.toPNG());

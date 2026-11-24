@@ -180,7 +180,7 @@ const Online = (() => {
     stopAll(); profile = null;
     Object.keys(OL).forEach(k => OL[k] = {});
     attach(); updateChip(); renderAll();
-    if (typeof DESKTOP !== 'undefined' && DESKTOP) desktopShow('login');
+    if (typeof DESKTOP !== 'undefined' && DESKTOP) { if (typeof hideLobby === 'function') hideLobby(); desktopShow('login'); }
     else toast('Signed out. Online chats are hidden until you sign in again.', 3500);
   }
   function stopAll() {
@@ -471,7 +471,7 @@ const Online = (() => {
   return {
     configured, init, signUp, setUsername, usernameOf, signIn, resetPassword, signOut, token, saveProfile, avatarChanged, profileChanged, attach, current, topicFor, avatarOf,
     createChat, joinChat, startDM, leaveChat, sent, edited, deleted, updateChip, SERVER,
-    get ready() { return ready(); }, get signedIn() { return !!uid(); }, get state() { return state; }, get problem() { return problem; },
+    get ready() { return ready(); }, get signedIn() { return !!uid(); }, get uid() { return uid() || ''; }, get state() { return state; }, get problem() { return problem; },
     get email() { return user?.email || ''; }, get profile() { return profile; }, get chats() { return Object.values(OL.channels); }
   };
 })();
@@ -613,6 +613,7 @@ function desktopDecision(authRestored) {
 function desktopUnlock() {
   document.body.classList.remove('desktop-locked');
   const el = $('#desktopGate'); if (el) el.remove();
+  if (typeof showLobby === 'function') showLobby();
 }
 function paintDesktopGate(screen, detail) {
   let el = $('#desktopGate');

@@ -494,6 +494,18 @@ body.chat-bubbles .chat-msg.me .rx{background:rgba(255,255,255,.88);color:#1a213
 body.desktop-locked .app{pointer-events:none}
 .desktop-gate{display:none}
 body.desktop-locked .desktop-gate{position:fixed;inset:0;z-index:120;display:grid;place-items:center;background:#15171a;color:#eceae4;padding:24px;font-family:"Inter",system-ui,sans-serif}
+#lobby{display:none;position:fixed;inset:0;z-index:80;overflow:auto;background:#15171a;color:#eceae4;padding:32px;font-family:"Inter",system-ui,sans-serif}
+body.show-lobby #lobby{display:block}
+body.desktop-locked #lobby{display:none}
+.lobby-card{width:min(560px,100%);margin:0 auto}
+.lobby-card h1{margin:0 0 6px;font-size:36px;font-family:"Space Grotesk",sans-serif}
+.lobby-lead,.lobby-card p{color:#a7a59d}
+.lobby-tabs{display:flex;gap:8px;margin:16px 0}
+.lobby-tabs button,.lobby-update,.lobby-game button{background:#1d2024;color:#eceae4;border:1px solid #33373d;border-radius:8px;padding:8px 12px}
+.lobby-update{display:block;margin-top:14px}
+.lobby-game{display:grid;gap:8px;margin-top:16px}
+.lobby-game input{height:40px;background:#1d2024;border:1px solid #33373d;border-radius:8px;padding:0 12px;color:#fff}
+.lobby-game div{display:flex;gap:8px;flex-wrap:wrap}
 .desktop-gate-card{width:min(420px,100%)}
 .desktop-gate-card h1{margin:0 0 8px;font-size:36px;font-family:"Space Grotesk",sans-serif}
 .desktop-gate-card p{color:#a7a59d;margin:0 0 8px}
