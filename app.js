@@ -23,7 +23,10 @@
 
 /* Omni's version number. When you release a change, bump this AND the
    CACHE name in sw.js, so everyone gets the "Update available" banner. */
-const APP_VERSION = '4.2.0';
+const APP_VERSION = '4.3.0';
+/* Set by the Windows shell (desktop/main.js). The website never sends this. */
+const DESKTOP = /\bOmniDesktop\//.test(navigator.userAgent);
+const PUBLIC_WEB_URL = 'https://firechirs-byte.github.io/omni/';
 
 /* The app's name lives in ONE place: APP_NAME in config.js. The page is written
    with "Omni"; named() swaps it for APP_NAME in the page, pop-ups and toasts. */
@@ -632,8 +635,8 @@ $('#settingsBtn').onclick = () => {
     `<div class="modal-card"><b>Status line</b><input id="setStatus" class="modal-input" maxlength="40" placeholder="e.g. Building Omni" value="${esc(settings.status || '')}"></div>` +
     `<div class="modal-card"><b>Your role in ${esc(M().name)} mode</b><select id="setRole" class="modal-input">${roles}</select></div>` +
     `<div class="modal-card"><b>Appearance</b><span>Colours, fonts, background picture, layout.</span><div class="row"><button class="close" id="setCustom">${icon('palette')} Customize</button></div></div>` +
-    `<div class="modal-card"><b>Data</b><span>Everything is stored in this browser.</span><div class="row"><button class="close" id="setClear">Clear ${esc(M().name)} data</button></div></div>` +
-    `<div class="modal-card wide"><b>Sound &amp; updates</b><span>Omni <b id="setVersion">v${APP_VERSION}</b> · ${swReg ? 'saved for offline use' : 'offline mode needs https:// or localhost'}</span>` +
+    `<div class="modal-card"><b>Data</b><span>${DESKTOP ? 'Local chats, themes and the whiteboard stay in this Windows app, separate from the website browser.' : 'Everything is stored in this browser.'}</span><div class="row"><button class="close" id="setClear">Clear ${esc(M().name)} data</button></div></div>` +
+    `<div class="modal-card wide"><b>Sound &amp; updates</b><span>Omni <b id="setVersion">v${APP_VERSION}</b> · ${DESKTOP ? 'desktop app · internet required for online chat' : (swReg ? 'saved for offline use' : 'offline mode needs https:// or localhost')}</span>` +
     `<div class="row"><span class="row-left"><label class="switch"><input type="checkbox" id="setSound" ${Sounds.prefs.on ? 'checked' : ''}><span></span></label> Sound on</span>` +
     `<span class="row-left"><button class="close" id="setSoundMore">${icon('volume')} Sound settings</button><button class="close" id="setUpdate">${icon('reload')} Check for updates</button></span></div></div>` +
     (typeof onlineCardHTML === 'function' ? onlineCardHTML() : '') +   // firebase.js
@@ -746,7 +749,7 @@ $('#leaveBtn').onclick = () => {
   $('#livePill').textContent = 'READY'; $('#livePill').classList.remove('red'); toast('You left the meeting');
 };
 $('#copyBtn').onclick = async () => {
-  const link = location.href.split('#')[0] + '#meeting=' + slug(M().labels.meeting + '-' + data.server);
+  const link = (DESKTOP ? PUBLIC_WEB_URL : location.href.split('#')[0]) + '#meeting=' + slug(M().labels.meeting + '-' + data.server);
   try { await navigator.clipboard.writeText(link); toast('Meeting link copied'); }
   catch { modal('Meeting link', 'Copy this link. (Other people can only join once Omni has a server.)', `<div class="modal-card wide"><span>${esc(link)}</span></div>`); }
 };
@@ -958,7 +961,7 @@ let deferredInstall = null;
 const standalone = () => matchMedia('(display-mode: standalone)').matches || navigator.standalone;
 window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); deferredInstall = e; });
 window.addEventListener('appinstalled', () => { Sounds.play('installed'); toast('Omni installed', 3000); $('#installBtn').style.display = 'none'; });
-if (standalone()) $('#installBtn').style.display = 'none';
+if (standalone() || DESKTOP) $('#installBtn').style.display = 'none';
 $('#installBtn').onclick = async () => {
   if (deferredInstall) {
     deferredInstall.prompt();
@@ -997,6 +1000,7 @@ $('#updateNow').onclick = () => {
 };
 
 async function checkForUpdate() {
+  if (DESKTOP) return toast('This Windows app updates when a newer Omni build is installed. Online chat still needs internet.', 4500);
   if (!swReg) return toast('Updates need Omni to be opened from https:// or localhost', 3500);
   if (waitingWorker) return showUpdateBanner(waitingWorker);
   toast('Checking for updates…');

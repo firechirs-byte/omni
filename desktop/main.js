@@ -1,0 +1,409 @@
+/* Omni desktop window.
+   Loads the same HTML/CSS/JS as the website, from a private omni://app
+   origin. The page does not get Node. Other websites open in the system
+   browser. Camera and microphone stay on this window, not on mini-browser
+   frames. There is no auto-updater: a new version is a new installer. */
+const { app, BrowserWindow, Menu, desktopCapturer, ipcMain, protocol, session, shell, webContents } = require('electron');
+const fs = require('fs/promises');
+const path = require('path');
+const policy = require('./policy');
+
+const version = require('../package.json').version;
+const selfTest = process.argv.includes('--omni-self-test');
+const opened = [];
+
+if (selfTest) {
+  app.setPath('userData', path.join(app.getPath('temp'), 'omni-desktop-self-test'));
+  app.commandLine.appendSwitch('disable-gpu');
+}
+
+app.userAgentFallback = `${app.userAgentFallback} OmniDesktop/${version}`;
+app.enableSandbox();
+
+protocol.registerSchemesAsPrivileged([{
+  scheme: 'omni',
+  privileges: {
+    standard: true,
+    secure: true,
+    supportFetchAPI: true,
+    corsEnabled: true,
+    stream: true,
+    allowServiceWorkers: false
+  }
+}]);
+
+const MIME = {
+  '.html': 'text/html; charset=utf-8',
+  '.css': 'text/css; charset=utf-8',
+  '.js': 'text/javascript; charset=utf-8',
+  '.webmanifest': 'application/manifest+json',
+  '.svg': 'image/svg+xml',
+  '.png': 'image/png',
+  '.woff2': 'font/woff2',
+  '.gif': 'image/gif',
+  '.txt': 'text/plain; charset=utf-8',
+  '.json': 'application/json; charset=utf-8',
+  '.ico': 'image/x-icon'
+};
+
+const CSP = [
+  "default-src 'self'",
+  "base-uri 'none'",
+  "object-src 'none'",
+  "frame-ancestors 'none'",
+  "form-action 'none'",
+  "worker-src 'none'",
+  "script-src 'self' https://www.gstatic.com",
+  "style-src 'self' 'unsafe-inline'",
+  "img-src 'self' data: blob: https:",
+  "font-src 'self'",
+  "media-src 'self' blob: data:",
+  "connect-src 'self' https://www.gstatic.com https://*.googleapis.com https://*.gstatic.com https://*.firebaseio.com https://*.giphy.com wss://*.firebaseio.com",
+  "frame-src https: http:"
+].join('; ');
+
+function openSafe(url) {
+  const safe = policy.safeExternalUrl(url);
+  if (!safe) return false;
+  if (selfTest) {
+    opened.push(safe);
+    return true;
+  }
+  shell.openExternal(safe);
+  return true;
+}
+
+async function readAppFile(requestUrl) {
+  const target = policy.resolveAppFile(app.getAppPath(), requestUrl);
+  if (!target) return null;
+  const ext = path.extname(target).toLowerCase();
+  const inAsar = target.includes('.asar');
+  try {
+    if (!inAsar) {
+      const baseReal = await fs.realpath(app.getAppPath());
+      const targetReal = await fs.realpath(target);
+      const rel = path.relative(baseReal, targetReal);
+      if (!rel || rel.startsWith('..') || path.isAbsolute(rel)) return null;
+      return { data: await fs.readFile(targetReal), ext };
+    }
+    return { data: await fs.readFile(target), ext };
+  } catch {
+    return null;
+  }
+}
+
+let creatingPicker = false;
+
+function attachGuards(contents) {
+  const picker = creatingPicker;
+  contents.setWindowOpenHandler(({ url }) => {
+    openSafe(url);
+    return { action: 'deny' };
+  });
+  contents.on('will-navigate', (event, url) => {
+    if (policy.isAppUrl(url)) return;
+    if (picker && url.startsWith('data:text/html')) return;
+    event.preventDefault();
+    openSafe(url);
+  });
+  contents.on('will-redirect', (event, url) => {
+    if (policy.isAppUrl(url)) return;
+    event.preventDefault();
+    openSafe(url);
+  });
+  contents.on('will-attach-webview', event => event.preventDefault());
+}
+
+app.on('web-contents-created', (_event, contents) => attachGuards(contents));
+
+const PICKER_HTML = `<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Share with Omni</title>
+<style>
+  body { margin: 0; font: 14px/1.4 sans-serif; background: #14181b; color: #eef2f4; }
+  header, footer { padding: 14px 16px; }
+  p { margin: 4px 0 0; color: #b7c0c6; }
+  ul { list-style: none; margin: 0; padding: 0 16px 8px; display: grid; gap: 8px; max-height: 320px; overflow: auto; }
+  button { font: inherit; color: inherit; }
+  button.row { display: flex; gap: 10px; align-items: center; width: 100%; text-align: left; background: #22282c; border: 1px solid #3a4348; border-radius: 8px; padding: 8px; }
+  button.row img { width: 120px; height: 68px; object-fit: cover; background: #000; }
+  button.cancel { background: transparent; border: 1px solid #3a4348; border-radius: 8px; padding: 8px 12px; }
+</style></head><body>
+<header><b>Share your screen</b><p>Choose what this window may capture. Nothing is shared until you pick it.</p></header>
+<ul id="list"></ul>
+<footer><button class="cancel" id="cancel" type="button">Cancel</button></footer>
+<script>
+  const list = document.getElementById('list');
+  document.getElementById('cancel').onclick = () => omniPicker.choose('');
+  omniPicker.onSources((sources) => {
+    if (!sources.length) {
+      const li = document.createElement('li');
+      li.textContent = 'No screen was found.';
+      list.appendChild(li);
+      return;
+    }
+    sources.forEach((source) => {
+      const li = document.createElement('li');
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'row';
+      if (typeof source.thumb === 'string' && source.thumb.startsWith('data:image/')) {
+        const img = document.createElement('img');
+        img.alt = '';
+        img.src = source.thumb;
+        btn.appendChild(img);
+      }
+      const name = document.createElement('span');
+      name.textContent = source.name || 'Screen';
+      btn.appendChild(name);
+      btn.onclick = () => omniPicker.choose(source.id);
+      li.appendChild(btn);
+      list.appendChild(li);
+    });
+  });
+</script></body></html>`;
+
+let pickerWindow = null;
+let pickerSettle = null;
+
+function presentSharePicker(parent, sources) {
+  if (pickerWindow) return Promise.resolve('');
+  return new Promise(resolve => {
+    let settled = false;
+    const finish = (id) => {
+      if (settled) return;
+      settled = true;
+      pickerSettle = null;
+      resolve(id || '');
+    };
+    pickerSettle = finish;
+    const list = sources.map(source => {
+      let thumb = '';
+      try {
+        if (source.thumbnail && !source.thumbnail.isEmpty()) thumb = source.thumbnail.toDataURL();
+      } catch { thumb = ''; }
+      return { id: source.id, name: source.name, thumb };
+    });
+    creatingPicker = true;
+    try {
+      pickerWindow = new BrowserWindow({
+        parent: parent || undefined,
+        modal: !!parent,
+        width: 520,
+        height: 480,
+        title: 'Share with Omni',
+        backgroundColor: '#14181b',
+        autoHideMenuBar: true,
+        minimizable: false,
+        maximizable: false,
+        fullscreenable: false,
+        skipTaskbar: true,
+        webPreferences: {
+          preload: path.join(__dirname, 'picker-preload.js'),
+          nodeIntegration: false,
+          contextIsolation: true,
+          sandbox: true,
+          webSecurity: true,
+          webviewTag: false,
+          nodeIntegrationInWorker: false,
+          nodeIntegrationInSubFrames: false
+        }
+      });
+    } catch {
+      creatingPicker = false;
+      finish('');
+      return;
+    } finally {
+      creatingPicker = false;
+    }
+    pickerWindow.removeMenu();
+    pickerWindow.on('closed', () => {
+      pickerWindow = null;
+      finish('');
+    });
+    pickerWindow.webContents.once('did-finish-load', () => {
+      if (pickerWindow && !pickerWindow.isDestroyed()) {
+        pickerWindow.webContents.send('omni-desktop-picker-sources', list);
+      }
+    });
+    pickerWindow.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(PICKER_HTML));
+  });
+}
+
+ipcMain.on('omni-desktop-picker-choice', (event, id) => {
+  if (!pickerWindow || event.sender !== pickerWindow.webContents || !pickerSettle) return;
+  const chosen = typeof id === 'string' ? id : '';
+  const done = pickerSettle;
+  done(chosen);
+  if (pickerWindow && !pickerWindow.isDestroyed()) pickerWindow.close();
+});
+
+function wirePermissions() {
+  const ses = session.defaultSession;
+  const decide = (permission, details) => policy.mediaAllowed({
+    permission,
+    requestingUrl: details.requestingUrl || details.securityOrigin || details.requestingOrigin || '',
+    isMainFrame: details.isMainFrame
+  });
+  ses.setPermissionRequestHandler((webContents, permission, callback, details) => {
+    callback(decide(permission, details || { requestingUrl: webContents && webContents.getURL() }));
+  });
+  ses.setPermissionCheckHandler((webContents, permission, requestingOrigin, details) => {
+    return decide(permission, Object.assign({ requestingUrl: requestingOrigin }, details || {}));
+  });
+  // useSystemPicker is macOS-only in this Electron. On Windows the handler runs
+  // and Omni shows its own picker. Nothing is captured until a source is chosen.
+  ses.setDisplayMediaRequestHandler(async (request, callback) => {
+    const finish = streams => {
+      try { callback(streams); } catch { /* the request already ended */ }
+    };
+    try {
+      const frame = request.frame;
+      const frameUrl = frame && frame.url;
+      if (!request.userGesture || !request.videoRequested || !frame || frame.parent ||
+          !policy.isAppUrl(request.securityOrigin) || !policy.isAppUrl(frameUrl)) {
+        finish(null);
+        return;
+      }
+      const sources = await desktopCapturer.getSources({
+        types: ['screen', 'window'],
+        thumbnailSize: { width: 320, height: 180 },
+        fetchWindowIcons: false
+      });
+      const owner = webContents.fromFrame(frame);
+      const parent = owner && BrowserWindow.fromWebContents(owner);
+      const chosen = await presentSharePicker(parent, sources);
+      const source = sources.find(item => item.id === chosen);
+      finish(source ? { video: { id: source.id, name: source.name } } : null);
+    } catch {
+      finish(null);
+    }
+  }, { useSystemPicker: true });
+  ses.on('will-download', (event, _item, webContents) => {
+    if (!webContents || !policy.isAppUrl(webContents.getURL())) event.preventDefault();
+  });
+}
+
+function createWindow() {
+  const win = new BrowserWindow({
+    width: 1280,
+    height: 800,
+    minWidth: 960,
+    minHeight: 640,
+    title: 'Omni',
+    backgroundColor: '#0c0f11',
+    autoHideMenuBar: true,
+    icon: path.join(app.getAppPath(), 'icons', 'icon-512.png'),
+    webPreferences: {
+      nodeIntegration: false,
+      contextIsolation: true,
+      sandbox: true,
+      webSecurity: true,
+      allowRunningInsecureContent: false,
+      webviewTag: false,
+      nodeIntegrationInWorker: false,
+      nodeIntegrationInSubFrames: false,
+      navigateOnDragDrop: false
+    }
+  });
+  win.removeMenu();
+  return win;
+}
+
+async function runSelfTest(win) {
+  const errors = [];
+  win.webContents.on('console-message', event => {
+    const text = event && event.message ? event.message : '';
+    if (event && (event.level === 'warning' || event.level === 'error')) errors.push(String(text));
+  });
+  const info = await win.webContents.executeJavaScript(`(() => ({
+    title: document.title,
+    protocol: location.protocol,
+    host: location.host,
+    href: location.href,
+    ua: navigator.userAgent,
+    processType: typeof process,
+    requireType: typeof require,
+    hasChip: !!document.getElementById('onlineChip'),
+    hasMeeting: !!document.getElementById('meetingPanel'),
+    hasComposer: !!document.getElementById('composer')
+  }))()`);
+  await win.webContents.executeJavaScript(`window.open('https://example.com/omni-test', '_blank', 'noopener')`);
+  await win.webContents.executeJavaScript(`window.open('file:///etc/passwd')`);
+  await win.webContents.executeJavaScript(`window.open('javascript:alert(1)')`);
+  await win.webContents.executeJavaScript(`location.assign('https://example.com/hijack')`).catch(() => {});
+  await new Promise(resolve => setTimeout(resolve, 300));
+  const still = await win.webContents.executeJavaScript('location.href');
+  const problems = [];
+  if (!String(info.title).includes('Omni')) problems.push('title: ' + info.title);
+  if (info.protocol !== 'omni:' || info.host !== 'app') problems.push('origin: ' + info.href);
+  if (!String(info.ua).includes('OmniDesktop/' + version)) problems.push('user agent: ' + info.ua);
+  if (info.processType !== 'undefined' || info.requireType !== 'undefined') problems.push('node leaked into the page');
+  if (!info.hasChip || !info.hasMeeting || !info.hasComposer) problems.push('page did not render');
+  if (!policy.isAppUrl(still)) problems.push('navigated away to ' + still);
+  if (!opened.some(url => url.startsWith('https://example.com/omni-test'))) problems.push('https link was not handed off');
+  if (opened.some(url => !url.startsWith('https://example.com/'))) problems.push('unexpected external url ' + opened.join(','));
+  const csp = errors.filter(message => /Content Security Policy/i.test(message) && /Refused/i.test(message));
+  if (csp.length) problems.push(csp.join(' | '));
+  if (problems.length) {
+    console.error(problems.join('\n'));
+    app.exit(1);
+    return;
+  }
+  console.log('OMNI_SELF_TEST_OK');
+  app.exit(0);
+}
+
+const gotLock = app.requestSingleInstanceLock();
+if (!gotLock) {
+  app.quit();
+} else {
+  app.on('second-instance', () => {
+    const win = BrowserWindow.getAllWindows()[0];
+    if (!win) return;
+    if (win.isMinimized()) win.restore();
+    win.focus();
+  });
+  app.whenReady().then(async () => {
+    Menu.setApplicationMenu(null);
+    protocol.handle('omni', async request => {
+      if (request.method !== 'GET' && request.method !== 'HEAD') {
+        return new Response('Method not allowed', { status: 405 });
+      }
+      const file = await readAppFile(request.url);
+      if (!file) return new Response('Not found', { status: 404 });
+      const headers = {
+        'Content-Type': MIME[file.ext] || 'application/octet-stream',
+        'Content-Security-Policy': CSP,
+        'X-Content-Type-Options': 'nosniff',
+        'Referrer-Policy': 'no-referrer',
+        'Cache-Control': 'no-store'
+      };
+      if (request.method === 'HEAD') return new Response(null, { status: 200, headers });
+      return new Response(file.data, { status: 200, headers });
+    });
+    wirePermissions();
+    const win = createWindow();
+    win.webContents.on('did-fail-load', (_event, code, description, url) => {
+      console.error('Failed to load', url, code, description);
+      if (selfTest) app.exit(1);
+    });
+    await win.loadURL('omni://app/index.html');
+    if (selfTest) {
+      const timer = setTimeout(() => {
+        console.error('self-test timed out');
+        app.exit(1);
+      }, 20000);
+      timer.unref?.();
+      try {
+        await runSelfTest(win);
+      } catch (err) {
+        console.error(err);
+        app.exit(1);
+      }
+    }
+  }).catch(err => {
+    console.error(err);
+    app.exit(1);
+  });
+  app.on('window-all-closed', () => app.quit());
+}

@@ -59,6 +59,8 @@ Open the online (https) version, or the localhost one, then:
 
 It gets its own icon and window and opens even when you're offline. That's the service worker (`sw.js`) doing its job.
 
+The website install above is unchanged, including <https://firechirs-byte.github.io/omni/>. A separate Windows desktop build (its own window, not the browser install button) is described in section 13.
+
 A zipped copy of the whole site is in `omni.zip` if you want to send it to someone or back it up.
 
 ---
@@ -246,3 +248,30 @@ The name is in **one place**: `const APP_NAME = 'Omni';` at the top of `config.j
 2. **Block and report** in online chats (a `reports` collection whose rules let people write reports but only admins read them).
 3. **Real calls** with WebRTC (start with two people). Firestore can carry the signalling messages.
 4. **Online reactions** (a `reactions` field or sub-collection, with rules like the ones for `messages`).
+
+## 13. Windows desktop app (v4.3)
+
+Omni v4.3 adds an optional Windows program in `desktop/`. It opens the same HTML, CSS and JavaScript in its own window. The GitHub Pages site is still the website: nothing here changes Firebase project `omni-chat-kb26`, the Firestore region (`asia-southeast1`), email/password sign-in, or the rules. Do not deploy this branch just to try the desktop app. The website updates when `main` is published, the same way as before.
+
+**What stays the same**
+
+- Chat, the four modes, local saving, and online accounts. Online chat still needs the internet.
+- Meetings are still only on this computer: microphone, camera and screen share are real, but other people do not join the call. Copying a meeting link copies the public website link. That link still does not start a real multi-person call.
+- The mini browser still shows pages inside Omni when the site allows it. A link that would leave the window opens in the normal browser instead.
+- Branding stays **Omni**. The Kinly rename is still on hold.
+
+**What is different on Windows**
+
+- Install the `.exe` (or run the portable `.exe`). The in-app **Install** button is hidden there, because this already is the app. "Check for updates" does not download a new version; there is no updater. Install a newer build when you have one.
+- The desktop copy does not use the service worker. Offline website files are the installed program. Signing in and online chat still need the internet.
+- Local chats, themes and the whiteboard are stored for the Windows user (`%APPDATA%\\Omni`), not in Chrome or Edge. They are not copied from the browser. The same Firebase account can sign in, and online messages then sync. Installer and portable exe share that same Windows profile.
+- The build is not code-signed. Windows SmartScreen can warn before the first launch. Signing would need a paid certificate, which this project does not add.
+
+**Security choices**
+
+- The window loads only Omni's own files, from `omni://app`.
+- The page cannot use Node (`nodeIntegration` off, context isolation on, renderer sandbox on).
+- Camera and microphone are granted only when Omni's own window asks (the mini browser cannot use them). Screen share opens a small Omni picker and captures a screen or window only after that choice. This Electron version's built-in system picker is macOS-only, so Windows uses Omni's picker.
+- Pop-ups and top-level navigations to other sites go to the system browser, and only for normal `http` and `https` addresses.
+
+Build steps, the exact commands, and the limits of what was run off a Windows PC are in `desktop/BUILD.md`.
