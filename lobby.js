@@ -16,12 +16,19 @@ function currentUid() {
 function buildLobby() {
   const root = document.createElement('div');
   root.id = 'lobby';
-  root.innerHTML = '<div class="lobby-card"><h1>Omni</h1><p class="lobby-lead">You are signed in on this Windows app.</p>' +
-    '<div class="lobby-tabs"><button type="button" id="lobbyTabHome">Lobby</button><button type="button" id="lobbyTabLinks">Connections</button></div>' +
-    '<section id="lobbyHome"><button type="button" class="join-call" id="lobbyOpen">Open Omni</button>' +
-    '<button type="button" class="lobby-update" id="lobbyUpdate"></button><p id="lobbyUpdateDetail"></p></section>' +
+  root.innerHTML = '<div class="lobby-shell"><header class="lobby-top"><div><p class="lobby-kicker">Omni</p><h1>Lobby</h1>' +
+    '<p class="lobby-lead">Signed in on this Windows app. Your chats stay in this profile.</p></div>' +
+    '<div class="lobby-tabs" role="tablist"><button type="button" id="lobbyTabHome" role="tab">Lobby</button>' +
+    '<button type="button" id="lobbyTabLinks" role="tab">Connections</button></div></header>' +
+    '<div class="lobby-body"><div class="lobby-main">' +
+    '<section id="lobbyHome"><div class="lobby-grid"><article class="lobby-jump"><h2>Jump in</h2>' +
+    '<p>Open the modes, channels, and voice lounge.</p><button type="button" class="join-call" id="lobbyOpen">Open Omni</button></article>' +
+    '<article class="lobby-note"><h2>On this PC</h2><p>One Omni window. Sign-in stays in this Windows profile.</p>' +
+    '<button type="button" class="lobby-update" id="lobbyUpdate"></button><p id="lobbyUpdateDetail"></p></article></div></section>' +
     '<section id="lobbyLinks" hidden><p id="lobbyUnverified">Not verified. Omni does not check that you own these Minecraft or Roblox names.</p>' +
-    '<div id="lobbyForms"></div></section></div>';
+    '<div id="lobbyForms" class="lobby-grid"></div></section></div>' +
+    '<aside class="lobby-activity" aria-label="About this lobby"><h2>Library</h2>' +
+    '<p>Connections are names you type. They are not live game status.</p></aside></div></div>';
   document.body.appendChild(root);
   root.querySelector('#lobbyOpen').onclick = hideLobby;
   root.querySelector('#lobbyTabHome').onclick = () => setLobbyTab('home');
@@ -41,6 +48,10 @@ function setLobbyTab(which) {
   if (!home || !links) return;
   home.hidden = which !== 'home';
   links.hidden = which !== 'links';
+  const homeTab = document.getElementById('lobbyTabHome');
+  const linkTab = document.getElementById('lobbyTabLinks');
+  if (homeTab) homeTab.setAttribute('aria-selected', which === 'home' ? 'true' : 'false');
+  if (linkTab) linkTab.setAttribute('aria-selected', which === 'links' ? 'true' : 'false');
   if (which === 'links') paintConnections();
 }
 function paintUpdate() {

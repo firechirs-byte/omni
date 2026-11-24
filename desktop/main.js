@@ -97,9 +97,11 @@ async function readAppFile(requestUrl) {
 }
 
 let creatingPicker = false;
+let capturingPage = false;
 
 function attachGuards(contents) {
   const picker = creatingPicker;
+  const allowFile = capturingPage;
   contents.setWindowOpenHandler(({ url }) => {
     openSafe(url);
     return { action: 'deny' };
@@ -107,6 +109,7 @@ function attachGuards(contents) {
   contents.on('will-navigate', (event, url) => {
     if (policy.isAppUrl(url)) return;
     if (picker && url.startsWith('data:text/html')) return;
+    if (allowFile && url.startsWith('file:')) return;
     event.preventDefault();
     openSafe(url);
   });
@@ -395,11 +398,12 @@ async function runSelfTest(win) {
     return;
   }
   console.log('OMNI_LOBBY_DOM ' + JSON.stringify(lobby));
-  await win.webContents.executeJavaScript('hideLobby()');
   const shot = async (name) => {
     const image = await win.capturePage();
     await fs.writeFile('/tmp/omni-' + name + '.png', image.toPNG());
   };
+  await shot('lobby');
+  await win.webContents.executeJavaScript('hideLobby()');
   const viewState = `(() => {
     const shown = (el) => !!(el && getComputedStyle(el).display !== 'none');
     return {
@@ -488,6 +492,26 @@ async function runSelfTest(win) {
   }
   console.log('OMNI_JOINED_DOM ' + JSON.stringify(joined));
   console.log('OMNI_LEFT_DOM ' + JSON.stringify(left));
+  capturingPage = true;
+  let page;
+  try {
+    page = new BrowserWindow({
+      show: false, width: 1100, height: 800,
+      webPreferences: { nodeIntegration: false, contextIsolation: true, sandbox: true, webviewTag: false }
+    });
+  } finally { capturingPage = false; }
+  await page.loadFile(path.join(app.getAppPath(), 'download.html'));
+  await new Promise(resolve => setTimeout(resolve, 400));
+  const downloadShot = await page.capturePage();
+  await fs.writeFile('/tmp/omni-download.png', downloadShot.toPNG());
+  const downloadLabel = await page.webContents.executeJavaScript(`document.getElementById('downloadStatus').textContent`);
+  page.destroy();
+  if (!String(downloadLabel).includes('not published')) {
+    console.error('download page ' + downloadLabel);
+    app.exit(1);
+    return;
+  }
+  console.log('OMNI_DOWNLOAD_PAGE ' + downloadLabel);
   console.log('OMNI_SELF_TEST_OK');
   console.log('OMNI_CALL_TEST_OK');
   app.exit(0);

@@ -53,6 +53,7 @@ These are facts for the 4.3.0 packaging run, not a Windows QA pass:
 - v4.3.2 keeps the program file named `Omni.exe` (no version in the name) and the same `%APPDATA%\Omni` profile. Its zip is `dist/Omni-4.3.2-win.zip` (153,765,357 bytes, sha256 `653a56588861ead3208d873ceb8f5d01f0f2357002cd72b66766484ec5803d0a`). Automatic updates are not switched on.
 - v4.3.3 shows Join Call until the microphone connects, and Leave hides the participant grid again. Its zip is `dist/Omni-4.3.3-win.zip` (153,766,177 bytes, sha256 `8b028d2cef242ff4bd89310060835ced2cc3bc7659a20f92af215924f7eac614`).
 - v4.3.4 adds the desktop Lobby and self-reported Minecraft and Roblox names. Its zip is `dist/Omni-4.3.4-win.zip` (153,770,123 bytes, sha256 `8fac57e9eab2e7633510def3e8e2c645df33dd8512a5bcfc0361bdd1637f0ed3`).
+- v4.3.5 restyles the lobby and adds `download.html`. Its zip is `dist/Omni-4.3.5-win.zip` (153,771,314 bytes, sha256 `598918cc68cbedd91ab0cf5429914e1e3c191b6be30a5ef77ce7c7b118e09fe9`).
 
 ## Behaviour notes
 
