@@ -494,6 +494,7 @@ body.chat-bubbles .chat-msg.me .rx{background:rgba(255,255,255,.88);color:#1a213
 body.desktop-locked .app{pointer-events:none}
 .desktop-gate{display:none}
 body.desktop-locked .desktop-gate{position:fixed;inset:0;z-index:120;display:grid;place-items:center;background:#15171a;color:#eceae4;padding:24px;font-family:"Inter",system-ui,sans-serif}
+body.desktop-locked .modal-backdrop{z-index:140}
 #lobby{position:fixed;inset:0;z-index:80;overflow:auto;background:#16181d;color:#f2f3f5;padding:28px 32px;font-family:"Inter",system-ui,sans-serif;visibility:hidden;opacity:0;pointer-events:none;transform:translateY(8px)}
 body.show-lobby #lobby{visibility:visible;opacity:1;pointer-events:auto;transform:none}
 body.desktop-locked #lobby{visibility:hidden;opacity:0;pointer-events:none}

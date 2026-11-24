@@ -1,6 +1,18 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
 const gate = require('../auth-gate.js');
+
+test('Create account opens above the desktop login screen', () => {
+  const css = fs.readFileSync(path.join(__dirname, '..', 'styles.css'), 'utf8');
+  const gateRule = css.match(/body\.desktop-locked \.desktop-gate\{[^}]*z-index:\s*(\d+)/);
+  const modalRule = css.match(/body\.desktop-locked \.modal-backdrop\{[^}]*z-index:\s*(\d+)/);
+  assert.ok(gateRule && modalRule);
+  assert.ok(Number(modalRule[1]) > Number(gateRule[1]));
+  const firebase = fs.readFileSync(path.join(__dirname, '..', 'firebase.js'), 'utf8');
+  assert.match(firebase, /\$\('#desktopNew'\)\.onclick = \(\) => openSignUp\(\)/);
+});
 
 test('the website is not locked behind desktop sign-in', () => {
   assert.deepEqual(gate.decide({ desktop: false, authRestored: false, signedIn: false }), { locked: false, screen: 'app' });

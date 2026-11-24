@@ -386,6 +386,47 @@ async function runSelfTest(win) {
     return;
   }
   console.log('OMNI_AUTH_TEST_OK ' + authReport.screen);
+  if (authReport.screen === 'login') {
+    const signup = await win.webContents.executeJavaScript(`(async () => {
+      const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+      const problems = [];
+      document.getElementById('desktopNew').click();
+      const modal = document.getElementById('modalBackdrop');
+      const box = modal.querySelector('.modal').getBoundingClientRect();
+      const hit = document.elementFromPoint(box.left + box.width / 2, box.top + 36);
+      if (getComputedStyle(modal).display !== 'grid') problems.push('signup modal did not open');
+      if (!modal.contains(hit)) problems.push('signup modal is not the visible layer');
+      document.getElementById('closeModal').click();
+      if (getComputedStyle(modal).display !== 'none') problems.push('close did not return to login');
+      if (!document.body.classList.contains('desktop-locked') || document.getElementById('desktopGate').dataset.screen !== 'login') problems.push('login gate went away');
+      document.getElementById('desktopNew').click();
+      document.getElementById('confirmModal').click();
+      await sleep(40);
+      const validation = document.getElementById('suErr') ? document.getElementById('suErr').textContent : '';
+      if (!validation) problems.push('empty signup showed no validation');
+      const original = Online.signUp;
+      Online.signUp = async () => { throw new Error('signup failed in test'); };
+      document.getElementById('suUser').value = 'keagan_14';
+      document.getElementById('suName').value = 'Keagan';
+      document.getElementById('suEmail').value = 'test@example.com';
+      document.getElementById('suPass').value = '12345678';
+      document.getElementById('suYear').value = '1990';
+      document.getElementById('confirmModal').click();
+      await sleep(80);
+      Online.signUp = original;
+      const asyncErr = document.getElementById('suErr') ? document.getElementById('suErr').textContent : '';
+      if (asyncErr !== 'signup failed in test') problems.push('async signup error was ' + asyncErr);
+      if (getComputedStyle(modal).display === 'none') problems.push('async error closed the form');
+      document.getElementById('closeModal').click();
+      return problems;
+    })()`, true);
+    if (!Array.isArray(signup) || signup.length) {
+      console.error(Array.isArray(signup) ? signup.join('\n') : 'signup check failed');
+      app.exit(1);
+      return;
+    }
+    console.log('OMNI_SIGNUP_TEST_OK');
+  }
   await win.webContents.executeJavaScript(`document.body.classList.remove('desktop-locked'); const g = document.getElementById('desktopGate'); if (g) g.remove(); showLobby();`);
   const lobby = await win.webContents.executeJavaScript(`(() => ({
     shown: document.body.classList.contains('show-lobby'),
