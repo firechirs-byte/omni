@@ -23,7 +23,7 @@
 
 /* Omni's version number. When you release a change, bump this AND the
    CACHE name in sw.js, so everyone gets the "Update available" banner. */
-const APP_VERSION = '4.3.5';
+const APP_VERSION = '4.3.6';
 /* Set by the Windows shell (desktop/main.js). The website never sends this. */
 const DESKTOP = /\bOmniDesktop\//.test(navigator.userAgent);
 const PUBLIC_WEB_URL = 'https://firechirs-byte.github.io/omni/';
