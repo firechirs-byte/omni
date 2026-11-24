@@ -15,6 +15,8 @@ const opened = [];
 if (selfTest) {
   app.setPath('userData', path.join(app.getPath('temp'), 'omni-desktop-self-test'));
   app.commandLine.appendSwitch('disable-gpu');
+  app.commandLine.appendSwitch('use-fake-device-for-media-stream');
+  app.commandLine.appendSwitch('use-fake-ui-for-media-stream');
 }
 
 app.userAgentFallback = `${app.userAgentFallback} OmniDesktop/${version}`;
@@ -349,7 +351,57 @@ async function runSelfTest(win) {
     app.exit(1);
     return;
   }
+  const callProblems = await win.webContents.executeJavaScript(`(async () => {
+    const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+    const pill = () => document.getElementById('livePill').textContent;
+    const here = () => document.querySelector('.breakout.here');
+    const problems = [];
+    const welcome = document.getElementById('welcome');
+    if (welcome && welcome.classList.contains('show')) {
+      document.getElementById('welcomeName').value = 'Keagan';
+      document.getElementById('welcomeStart').click();
+      await sleep(150);
+    }
+    const real = navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices);
+    navigator.mediaDevices.getUserMedia = () => Promise.reject(new DOMException('denied', 'NotAllowedError'));
+    document.querySelector('[data-room="0"]').click();
+    await sleep(300);
+    if (here()) problems.push('failed join stayed in the lounge');
+    if (pill() === 'LIVE') problems.push('failed join went live');
+    navigator.mediaDevices.getUserMedia = real;
+    document.querySelector('[data-room="0"]').click();
+    await sleep(1200);
+    if (pill() !== 'LIVE') problems.push('join pill ' + pill());
+    if (!here()) problems.push('join did not mark the lounge');
+    const joined = here() && here().querySelector('button');
+    if (!joined || joined.textContent !== 'Leave') problems.push('lounge button is not Leave');
+    document.querySelector('[data-room="1"]').click();
+    await sleep(250);
+    if (pill() !== 'LIVE') problems.push('switching lounge dropped the call');
+    const moved = here() && here().querySelector('button');
+    if (!moved || moved.dataset.room !== '1') problems.push('did not move to the other lounge');
+    document.querySelector('[data-room="1"]').click();
+    await sleep(400);
+    if (here()) problems.push('lounge Leave stayed in the room');
+    if (pill() !== 'READY') problems.push('lounge Leave pill ' + pill());
+    document.querySelector('[data-room="0"]').click();
+    await sleep(1200);
+    if (pill() !== 'LIVE' || !here()) problems.push('rejoin failed ' + pill());
+    document.getElementById('leaveBtn').click();
+    await sleep(300);
+    if (here() || pill() !== 'READY') problems.push('meeting Leave did not exit the lounge');
+    document.getElementById('leaveBtn').click();
+    await sleep(150);
+    if (pill() !== 'READY' || here()) problems.push('repeat Leave changed the call');
+    return problems;
+  })()`, true);
+  if (!Array.isArray(callProblems) || callProblems.length) {
+    console.error(Array.isArray(callProblems) ? callProblems.join('\n') : 'call check failed');
+    app.exit(1);
+    return;
+  }
   console.log('OMNI_SELF_TEST_OK');
+  console.log('OMNI_CALL_TEST_OK');
   app.exit(0);
 }
 
@@ -392,7 +444,7 @@ if (!gotLock) {
       const timer = setTimeout(() => {
         console.error('self-test timed out');
         app.exit(1);
-      }, 20000);
+      }, 30000);
       timer.unref?.();
       try {
         await runSelfTest(win);
