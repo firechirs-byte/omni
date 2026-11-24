@@ -81,10 +81,17 @@
           <div class="meeting-head">
             <span class="live" id="livePill">READY</span>
             <h2 class="meeting-title" id="meetingTitle" data-label="meeting">Meeting</h2>
-            <span class="meeting-count" id="meetingCount">1 participant</span>
+            <span class="meeting-count" id="meetingCount">Not in a call</span>
             <div class="grow"></div>
             <button class="icon-btn" id="copyBtn" title="Copy meeting link" aria-label="Copy meeting link"><i data-icon="link"></i></button>
             <button class="icon-btn" id="inviteBtn" title="Invite" aria-label="Invite"><i data-icon="userPlus"></i></button>
+          </div>
+          <div class="call-idle" id="callIdle">
+            <div>
+              <h2 id="callIdleTitle">Voice Lounge</h2>
+              <p id="callIdleText">You can read the chat. Nothing is shared until you join.</p>
+              <button type="button" class="join-call" id="joinCallBtn">Join Call</button>
+            </div>
           </div>
           <div class="video-grid">
             <div class="tile" id="localTile"><video class="local-video" id="localVideo" autoplay playsinline muted></video><div class="face" id="localFace">KG</div><span class="label">You</span><span class="mic" id="localMic"><i data-icon="mic"></i></span></div>

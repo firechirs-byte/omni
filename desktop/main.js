@@ -383,48 +383,67 @@ async function runSelfTest(win) {
   }
   console.log('OMNI_AUTH_TEST_OK ' + authReport.screen);
   await win.webContents.executeJavaScript(`document.body.classList.remove('desktop-locked'); const g = document.getElementById('desktopGate'); if (g) g.remove();`);
+  const shot = async (name) => {
+    const image = await win.capturePage();
+    await fs.writeFile('/tmp/omni-' + name + '.png', image.toPNG());
+  };
+  const viewState = `(() => {
+    const shown = (el) => !!(el && getComputedStyle(el).display !== 'none');
+    return {
+      channel: document.getElementById('channelName').textContent,
+      meeting: document.getElementById('meetingTitle').textContent,
+      inCall: document.getElementById('meetingPanel').classList.contains('in-call'),
+      grid: shown(document.querySelector('.video-grid')),
+      controls: shown(document.querySelector('.meeting-controls')),
+      join: shown(document.getElementById('callIdle')) ? document.getElementById('joinCallBtn').textContent : '',
+      pill: document.getElementById('livePill').textContent,
+      count: document.getElementById('meetingCount').textContent,
+      mic: document.querySelector('#micBtn .label').textContent,
+      micEmph: document.getElementById('micBtn').classList.contains('emph'),
+      leave: document.querySelector('#leaveBtn .label').textContent
+    };
+  })()`;
+  await win.webContents.executeJavaScript(`document.querySelector('[data-channel="voice-lounge"]').click()`);
+  const idle = await win.webContents.executeJavaScript(viewState);
+  await shot('voice-idle');
+  const idleProblems = [];
+  if (idle.channel !== 'voice-lounge') idleProblems.push('channel ' + idle.channel);
+  if (idle.meeting !== 'Voice Lounge') idleProblems.push('meeting title ' + idle.meeting);
+  if (idle.inCall || idle.grid || idle.controls) idleProblems.push('opening the lounge already showed the call ' + JSON.stringify(idle));
+  if (idle.join !== 'Join Call') idleProblems.push('missing Join Call, saw ' + idle.join);
+  if (idle.pill !== 'READY') idleProblems.push('idle pill ' + idle.pill);
+  if (idle.micEmph) idleProblems.push('Mute was highlighted before Join Call');
+  if (idleProblems.length) { console.error(idleProblems.join('\n')); app.exit(1); return; }
+  console.log('OMNI_IDLE_DOM ' + JSON.stringify(idle));
   const callProblems = await win.webContents.executeJavaScript(`(async () => {
     const sleep = (ms) => new Promise(r => setTimeout(r, ms));
-    const pill = () => document.getElementById('livePill').textContent;
-    const here = () => document.querySelector('.breakout.here');
+    const shown = (el) => !!(el && getComputedStyle(el).display !== 'none');
     const problems = [];
-    const welcome = document.getElementById('welcome');
-    if (welcome && welcome.classList.contains('show')) {
-      document.getElementById('welcomeName').value = 'Keagan';
-      document.getElementById('welcomeStart').click();
-      await sleep(150);
-    }
+    document.querySelector('[data-room="0"]').click();
+    await sleep(200);
+    if (document.getElementById('meetingPanel').classList.contains('in-call') || document.getElementById('livePill').textContent === 'LIVE') problems.push('picking a squad room started the call');
     const real = navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices);
     navigator.mediaDevices.getUserMedia = () => Promise.reject(new DOMException('denied', 'NotAllowedError'));
-    document.querySelector('[data-room="0"]').click();
+    document.getElementById('joinCallBtn').click();
     await sleep(300);
-    if (here()) problems.push('failed join stayed in the lounge');
-    if (pill() === 'LIVE') problems.push('failed join went live');
+    if (document.getElementById('meetingPanel').classList.contains('in-call') || shown(document.querySelector('.video-grid'))) problems.push('failed Join Call showed the grid');
     navigator.mediaDevices.getUserMedia = real;
-    document.querySelector('[data-room="0"]').click();
-    await sleep(1200);
-    if (pill() !== 'LIVE') problems.push('join pill ' + pill());
-    if (!here()) problems.push('join did not mark the lounge');
-    const joined = here() && here().querySelector('button');
-    if (!joined || joined.textContent !== 'Leave') problems.push('lounge button is not Leave');
-    document.querySelector('[data-room="1"]').click();
-    await sleep(250);
-    if (pill() !== 'LIVE') problems.push('switching lounge dropped the call');
-    const moved = here() && here().querySelector('button');
-    if (!moved || moved.dataset.room !== '1') problems.push('did not move to the other lounge');
-    document.querySelector('[data-room="1"]').click();
+    document.getElementById('joinCallBtn').click();
+    await sleep(200);
+    document.getElementById('leaveBtn').click();
     await sleep(400);
-    if (here()) problems.push('lounge Leave stayed in the room');
-    if (pill() !== 'READY') problems.push('lounge Leave pill ' + pill());
-    document.querySelector('[data-room="0"]').click();
+    if (document.getElementById('meetingPanel').classList.contains('in-call') || shown(document.querySelector('.video-grid'))) problems.push('leaving during join left the grid up');
+    document.getElementById('joinCallBtn').click();
     await sleep(1200);
-    if (pill() !== 'LIVE' || !here()) problems.push('rejoin failed ' + pill());
-    document.getElementById('leaveBtn').click();
-    await sleep(300);
-    if (here() || pill() !== 'READY') problems.push('meeting Leave did not exit the lounge');
-    document.getElementById('leaveBtn').click();
-    await sleep(150);
-    if (pill() !== 'READY' || here()) problems.push('repeat Leave changed the call');
+    if (!document.getElementById('meetingPanel').classList.contains('in-call')) problems.push('Join Call did not mark the meeting in-call');
+    if (!shown(document.querySelector('.video-grid')) || !shown(document.querySelector('.meeting-controls'))) problems.push('connected controls stayed hidden');
+    if (shown(document.getElementById('callIdle'))) problems.push('Join Call stayed visible after connecting');
+    if (document.getElementById('livePill').textContent !== 'LIVE') problems.push('pill ' + document.getElementById('livePill').textContent);
+    if (!document.getElementById('micBtn').classList.contains('emph')) problems.push('connected Mute was not highlighted');
+    document.querySelector('[data-channel="lfg"]').click();
+    await sleep(200);
+    if (!document.getElementById('meetingPanel').classList.contains('in-call')) problems.push('changing channel dropped or restarted the call view');
+    document.querySelector('[data-channel="voice-lounge"]').click();
     return problems;
   })()`, true);
   if (!Array.isArray(callProblems) || callProblems.length) {
@@ -432,6 +451,30 @@ async function runSelfTest(win) {
     app.exit(1);
     return;
   }
+  const joined = await win.webContents.executeJavaScript(viewState);
+  await shot('voice-joined');
+  await win.webContents.executeJavaScript(`document.getElementById('leaveBtn').click()`, true);
+  await new Promise(resolve => setTimeout(resolve, 300));
+  const left = await win.webContents.executeJavaScript(viewState);
+  await shot('voice-left');
+  const leftProblems = [];
+  if (left.inCall || left.grid || left.controls) leftProblems.push('Leave left the call grid up ' + JSON.stringify(left));
+  if (left.join !== 'Join Call') leftProblems.push('Join Call was not shown after Leave');
+  if (left.pill !== 'READY' || left.count !== 'Not in a call') leftProblems.push('status after Leave ' + left.pill + ' ' + left.count);
+  if (left.micEmph) leftProblems.push('Mute stayed highlighted after Leave');
+  if (left.channel !== 'voice-lounge') leftProblems.push('Leave left the channel ' + left.channel);
+  if (!joined.inCall || joined.pill !== 'LIVE' || !joined.grid) leftProblems.push('join snapshot was not connected ' + JSON.stringify(joined));
+  if (leftProblems.length) { console.error(leftProblems.join('\n')); app.exit(1); return; }
+  await win.webContents.executeJavaScript(`document.querySelector('[data-mode="school"]').click()`);
+  await win.webContents.executeJavaScript(`document.querySelector('[data-mode="gaming"]').click(); document.querySelector('[data-channel="voice-lounge"]').click()`);
+  const returned = await win.webContents.executeJavaScript(viewState);
+  if (returned.inCall || returned.join !== 'Join Call') {
+    console.error('mode switch rejoined the call ' + JSON.stringify(returned));
+    app.exit(1);
+    return;
+  }
+  console.log('OMNI_JOINED_DOM ' + JSON.stringify(joined));
+  console.log('OMNI_LEFT_DOM ' + JSON.stringify(left));
   console.log('OMNI_SELF_TEST_OK');
   console.log('OMNI_CALL_TEST_OK');
   app.exit(0);

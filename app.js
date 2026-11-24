@@ -23,7 +23,7 @@
 
 /* Omni's version number. When you release a change, bump this AND the
    CACHE name in sw.js, so everyone gets the "Update available" banner. */
-const APP_VERSION = '4.3.2';
+const APP_VERSION = '4.3.3';
 /* Set by the Windows shell (desktop/main.js). The website never sends this. */
 const DESKTOP = /\bOmniDesktop\//.test(navigator.userAgent);
 const PUBLIC_WEB_URL = 'https://firechirs-byte.github.io/omni/';
@@ -270,7 +270,7 @@ const srv = () => data.servers[data.server];   // the current server
 
 // What you are looking at right now: a channel or a direct message
 let view = { type: 'channel', id: Object.keys(srv().channels)[0] };
-let mediaStream = null, screenStream = null, muted = false, cameraOn = false, hand = false, room = null, callGen = 0;
+let mediaStream = null, screenStream = null, muted = false, cameraOn = false, hand = false, room = null, callGen = 0, callJoined = false;
 
 /* ---------- 4. Theme ---------- */
 // The mode's default theme with your saved changes laid on top
@@ -501,9 +501,10 @@ function renderExtra() {
   }).join('') : `<div class="empty">${esc(M().extra.empty)}</div>`;
 }
 
+const CALL_EMPH = new Set(['micBtn', 'callBtn', 'cameraBtn', 'shareBtn', 'raiseBtn', 'leaveBtn', 'reactBtn']);
 function renderEmphasis() {
   $$('.emph').forEach(el => el.classList.remove('emph'));
-  M().emphasize.forEach(id => $('#' + id)?.classList.add('emph'));
+  M().emphasize.forEach(id => { if (!callJoined && CALL_EMPH.has(id)) return; $('#' + id)?.classList.add('emph'); });
   // put the right-hand panels in this mode's order
   M().panelOrder.forEach((key, i) => { const el = $('#' + key + 'Panel'); if (el) el.style.order = i; });
 }
@@ -511,6 +512,7 @@ function renderEmphasis() {
 function renderAll() {
   renderLabels(); renderModeSwitch(); renderServers(); renderChannels(); renderDMs();
   renderHeader(); renderChat(); renderFiles(); renderPeople(); renderRooms(); renderExtra(); renderEmphasis();
+  syncCallView();
 }
 
 /* ---------- 6. Actions ---------- */
@@ -717,12 +719,20 @@ function stopCapture() {
   resetCallChrome();
 }
 /* Leave the lounge and the call. Safe to call again. silent: no sound or toast (mode switch). */
+function syncCallView() {
+  const panel = $('#meetingPanel');
+  if (panel) panel.classList.toggle('in-call', !!callJoined);
+  if ($('#callIdleTitle')) $('#callIdleTitle').textContent = M().labels.meeting || 'Call';
+}
 function leaveCall(opts = {}) {
-  const was = inCall();
+  const was = callJoined || !!(mediaStream || screenStream || cameraOn || hand || $('#livePill').classList.contains('red'));
   callGen++;
+  callJoined = false;
   const wasRoom = room;
   stopCapture();
   if (wasRoom !== null) { room = null; renderRooms(); }
+  syncCallView();
+  renderEmphasis();
   if (!was) return false;
   if (!opts.silent) { Sounds.play('leave'); toast('You left the call'); }
   return true;
@@ -749,38 +759,43 @@ async function startMedia(video = false, opts = {}) {
     return false;
   }
 }
-/* Join starts the voice call. Leave on the same lounge hangs up. A failed mic does not keep you "here". */
-async function enterLounge(i) {
+/* Squad rooms only pick a room. The microphone starts from Join Call, not from opening a channel or a room. */
+function enterLounge(i) {
   const rooms = M().rooms || [];
   if (!Number.isInteger(i) || i < 0 || i >= rooms.length) return;
-  if (room === i) { leaveCall(); return; }
+  room = room === i ? null : i;
+  renderRooms();
+}
+async function joinCall() {
+  if (callJoined && mediaStream) return;
   const gen = ++callGen;
-  const alreadyLive = !!mediaStream;
-  room = i; renderRooms();
-  if (!alreadyLive) {
-    const ok = await startMedia(false, { quiet: true, gen });
-    if (gen !== callGen) return;
-    if (!ok) {
-      if (room === i) room = null;
-      stopCapture();
-      renderRooms();
-      toast('Could not join the lounge. The microphone was not allowed.');
-      return;
-    }
-    Sounds.play('join');
-  }
+  const ok = await startMedia(false, { quiet: true, gen });
   if (gen !== callGen) return;
-  toast('Joined ' + rooms[i][0]);
+  if (!ok || !mediaStream) {
+    callJoined = false;
+    stopCapture();
+    syncCallView();
+    toast('Could not join the call. The microphone was not allowed.');
+    return;
+  }
+  callJoined = true;
+  syncCallView();
+  renderEmphasis();
+  Sounds.play('join');
+  toast('Joined the call');
 }
 async function toggleMic() {
-  if (!mediaStream) { await startMedia(); if (!mediaStream) return; }
+  if (!callJoined) return;
+  if (!mediaStream) return;
   muted = !muted; mediaStream.getAudioTracks().forEach(t => t.enabled = !muted);
   $('#micBtn').classList.toggle('active', muted); $('#micBtn .label').textContent = muted ? 'Unmute' : 'Mute';
   $('#localMic').innerHTML = icon(muted ? 'micOff' : 'mic');
 }
 $('#micBtn').onclick = toggleMic;
-$('#callBtn').onclick = async () => { if (mediaStream) return toast('You are already connected'); await startMedia(false); };
+$('#joinCallBtn').onclick = () => joinCall();
+$('#callBtn').onclick = () => { if (callJoined) return toast('You are already in the call'); joinCall(); };
 $('#cameraBtn').onclick = async () => {
+  if (!callJoined) return;
   if (cameraOn) {
     mediaStream?.getVideoTracks().forEach(t => t.stop()); cameraOn = false;
     $('#localVideo').style.display = 'none'; $('#localFace').style.display = 'grid';
@@ -791,6 +806,7 @@ $('#cameraBtn').onclick = async () => {
 };
 $('#videoBtn').onclick = () => $('#cameraBtn').click();
 $('#shareBtn').onclick = async () => {
+  if (!callJoined) return;
   if (screenStream) {
     screenStream.getTracks().forEach(t => t.stop()); screenStream = null;
     $('#screenVideo').style.display = 'none'; $('#screenCard').style.display = 'block'; $('#screenLabel').textContent = 'Screen share is off';

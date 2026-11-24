@@ -22,8 +22,9 @@ test('leaving a lounge hangs up the call', () => {
   assert.match(app, /function enterLounge/);
   assert.match(app, /dataset\.room !== undefined\) enterLounge/);
   assert.match(app, /\$\('#leaveBtn'\)\.onclick = \(\) => leaveCall\(\)/);
+  assert.match(app, /\$\('#joinCallBtn'\)\.onclick = \(\) => joinCall\(\)/);
   assert.match(app, /stopTracks\(screen\); stopTracks\(media\)/);
-  assert.match(app, /if \(room === i\) \{ leaveCall\(\); return; \}/);
-  assert.match(app, /Could not join the lounge/);
+  assert.match(app, /room = room === i \? null : i/);
+  assert.equal(app.includes("Could not join the lounge"), false);
   assert.equal(app.includes("You left the meeting"), false);
 });
