@@ -434,12 +434,43 @@ async function runSelfTest(win) {
     note: (document.getElementById('lobbyUnverified') || {}).textContent || '',
     games: [...document.querySelectorAll('#lobby [data-game]')].map(el => el.dataset.game)
   }))()`);
-  if (!lobby.shown || lobby.update !== "Updates aren't set up" || !lobby.note.includes('Not verified') || lobby.games.join() !== 'minecraft,roblox') {
+  if (!lobby.shown || !lobby.update.includes('does not update itself') || lobby.update.includes('up to date') || !lobby.note.includes('Not verified') || lobby.games.join() !== 'minecraft,roblox') {
     console.error('lobby ' + JSON.stringify(lobby));
     app.exit(1);
     return;
   }
   console.log('OMNI_LOBBY_DOM ' + JSON.stringify(lobby));
+  const navProblems = await win.webContents.executeJavaScript(`(() => {
+    const problems = [];
+    document.getElementById('lobbyTabLinks').click();
+    const place = (document.getElementById('lobbyPlace') || {}).textContent || '';
+    if (!place.includes('Connections') || !place.includes('Open Omni')) problems.push('connections place ' + place);
+    if (document.getElementById('lobbyLinks').hidden) problems.push('connections stayed hidden');
+    const top = document.getElementById('lobbyOpenTop');
+    if (!top || top.textContent !== 'Open Omni') problems.push('header Open Omni missing');
+    top.click();
+    if (document.body.classList.contains('show-lobby')) problems.push('Open Omni left the lobby up');
+    const back = document.getElementById('lobbyBtn');
+    if (!back || back.hidden || back.textContent !== 'Back to Lobby') problems.push('back control missing');
+    const modeLabel = document.querySelector('#modeSwitch button.active .lbl');
+    if (!modeLabel || getComputedStyle(modeLabel).display === 'none') problems.push('current mode name is hidden');
+    back.click();
+    if (!document.body.classList.contains('show-lobby')) problems.push('Back to Lobby did not return');
+    const side = document.getElementById('sideLobby');
+    if (!side || side.textContent !== 'Back to Lobby') problems.push('sidebar path missing');
+    side.click();
+    if (!document.body.classList.contains('show-lobby')) problems.push('sidebar path did not return');
+    document.getElementById('lobbyTabHome').click();
+    const home = (document.getElementById('lobbyPlace') || {}).textContent || '';
+    if (!home.includes('You are in Lobby')) problems.push('home place ' + home);
+    return problems;
+  })()`);
+  if (!Array.isArray(navProblems) || navProblems.length) {
+    console.error(Array.isArray(navProblems) ? navProblems.join('\n') : 'navigation check failed');
+    app.exit(1);
+    return;
+  }
+  console.log('OMNI_NAV_TEST_OK');
   const shot = async (name) => {
     const image = await win.capturePage();
     await fs.writeFile('/tmp/omni-' + name + '.png', image.toPNG());

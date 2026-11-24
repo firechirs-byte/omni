@@ -278,6 +278,8 @@ Build steps, the exact commands, and the limits of what was run off a Windows PC
 
 **v4.3.1:** Leave on a lounge (and the meeting Leave button) hangs up. The microphone, camera and screen share stop, the lounge no longer says "You are here", and you can join again. If the microphone is blocked, Join does not leave you in the lounge. Sounds are shorter and quieter. The volume slider and the message, call and update switches are still there. Online text chats are not left when you leave a call. There is still no multi-person call.
 
+**v4.3.7:** The lobby says this copy does not update itself, and names Lobby, Connections, and Back to Lobby. It does not download or install an update. No 4.3.7 app was packed with this note.
+
 **v4.3.6:** Create account on the desktop login screen opens the signup form on top of that screen. The Apple Silicon test zip is `Omni-4.3.6-mac-arm64.zip`. It was packed on Linux and is not a signed Mac app.
 
 **v4.3.5:** The lobby uses Omni’s own green cards on a dark neutral layout. `download.html` is a separate page and is not the app’s home page. Its download button stays unpublished until `download-config.json` has a real https file, version, and checksum.

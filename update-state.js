@@ -20,27 +20,35 @@
       return url.protocol === 'https:' && !url.username && !url.password;
     } catch { return false; }
   }
+  function platformName(value) {
+    if (value === 'mac') return 'Mac';
+    if (value === 'windows') return 'Windows';
+    return 'this computer';
+  }
   function lobbyUpdate(input) {
     const src = input || {};
-    const base = { willDownload: false };
+    const version = src.currentVersion ? 'Omni ' + src.currentVersion : 'This Omni copy';
+    const platform = platformName(src.platform);
+    const base = { willDownload: false, willInstall: false, checksNetwork: false };
+    const manual = ' Replace this folder yourself. A Mac app and a Windows folder are different packages and do not update each other. Automatic install needs an owner-approved https feed and a signed installer. Neither is set up, and this does not download or install anything.';
     if (newer(src.knownNewer, src.currentVersion)) {
       return Object.assign(base, {
         kind: 'update-needed',
-        label: 'Update needed',
-        detail: 'A newer Omni version is known (' + src.knownNewer + '). This copy will not download it. Replace the Omni folder when you have that zip.'
+        label: 'A newer copy is known',
+        detail: src.knownNewer + ' is newer than ' + version + ' on ' + platform + '.' + manual
       });
     }
     if (src.enabled === true && feedOk(src.feedUrl)) {
       return Object.assign(base, {
         kind: 'unavailable',
-        label: 'Updates aren\'t set up',
-        detail: 'No newer version was provided to this app, and this copy does not download updates.'
+        label: 'This copy does not update itself',
+        detail: version + ' on ' + platform + ' was not given a newer version.' + manual
       });
     }
     return Object.assign(base, {
       kind: 'unavailable',
-      label: 'Updates aren\'t set up',
-      detail: 'Omni is not checking for updates. No update feed is turned on, and nothing will be downloaded.'
+      label: 'This copy does not update itself',
+      detail: version + ' on ' + platform + ' is not checking a feed.' + manual
     });
   }
   return { newer, lobbyUpdate };

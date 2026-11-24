@@ -502,8 +502,11 @@ body.desktop-locked #lobby{visibility:hidden;opacity:0;pointer-events:none}
 .lobby-top{display:flex;justify-content:space-between;gap:16px;align-items:flex-end;margin-bottom:18px}
 .lobby-kicker{margin:0;color:#1f8a4c;font-weight:700;letter-spacing:.04em;font-size:.78rem}
 .lobby-top h1{font-size:32px}
-.lobby-lead,.lobby-activity p,.lobby-jump p,.lobby-note p{color:#b5bac1}
-.lobby-tabs{display:flex;gap:6px}
+.lobby-lead,.lobby-activity p,.lobby-jump p,.lobby-note p,.lobby-place{color:#b5bac1}
+.lobby-place{margin:8px 0 0}
+.lobby-tabs{display:flex;gap:6px;align-items:center}
+#lobbyBtn{height:34px;padding:0 10px;border-radius:var(--r-sm);border:1px solid var(--line);font-size:.82rem;font-weight:700;color:var(--text);white-space:nowrap}
+#lobbyBtn:hover{background:var(--hover)}
 .lobby-tabs button{color:#b5bac1;padding:8px 12px;border-radius:8px}
 .lobby-tabs button[aria-selected="true"]{background:#2b2d31;color:#fff}
 .lobby-body{display:grid;grid-template-columns:minmax(0,1fr) 240px;gap:16px}
@@ -511,8 +514,10 @@ body.desktop-locked #lobby{visibility:hidden;opacity:0;pointer-events:none}
 .lobby-jump,.lobby-note,.lobby-game,.lobby-activity{background:#232428;border:1px solid #2e3036;border-radius:12px;padding:16px}
 .lobby-jump{background:linear-gradient(180deg,#243328,#232428 70%)}
 .lobby-activity{align-self:start}
-.lobby-update,.lobby-game button{background:#2b2d31;color:#f2f3f5;border:1px solid #3a3d44;border-radius:8px;padding:8px 12px}
-.lobby-update{margin-top:10px}
+.lobby-game button{background:#2b2d31;color:#f2f3f5;border:1px solid #3a3d44;border-radius:8px;padding:8px 12px}
+.lobby-update{margin-top:10px;background:#1e1f22;color:#f2f3f5;border:1px solid #3a3d44;border-radius:8px;padding:10px 12px}
+.lobby-update strong{display:block}
+.lobby-update p{margin:6px 0 0;color:#b5bac1}
 .lobby-game{display:grid;gap:8px}
 .lobby-game input{height:40px;background:#1e1f22;border:1px solid #3a3d44;border-radius:8px;padding:0 12px;color:#fff}
 .lobby-game div{display:flex;gap:8px;flex-wrap:wrap}
@@ -599,7 +604,7 @@ body.no-motion *,body.no-motion *::before,body.no-motion *::after{transition:non
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{transition-duration:.01ms!important;animation:none!important}}
 
 /* ---------- 15. Smaller screens ---------- */
-@media(max-width:1320px){.mode-switch .lbl{display:none}.search .lbl{display:none}.topic{display:none}}
+@media(max-width:1320px){.mode-switch .lbl{display:none}.mode-switch button.active .lbl{display:inline}.search .lbl{display:none}.topic{display:none}}
 @media(max-width:1100px){
   :root{--side-w:220px}
   body{overflow-x:hidden;overflow-y:auto}

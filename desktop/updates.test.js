@@ -38,6 +38,22 @@ test('the window name stays Omni and updates are only checked locally', () => {
   assert.match(main, /if \(selfTest\) \{[\s\S]*setPath\('userData'/);
 });
 
+test('mocked fetch and install hooks are not called', () => {
+  let fetched = false;
+  let installed = false;
+  const result = updates.plan({ enabled: true, feedUrl: 'https://example.com/updates' }, {
+    fetch() { fetched = true; },
+    install() { installed = true; }
+  });
+  assert.equal(fetched, false);
+  assert.equal(installed, false);
+  assert.equal(result.ranFetch, false);
+  assert.equal(result.ranInstall, false);
+  assert.equal(result.willDownload, false);
+  assert.equal(result.checked, false);
+  assert.equal(result.status, 'blocked');
+});
+
 test('the updater does not fetch or spawn', () => {
   const src = fs.readFileSync(path.join(__dirname, 'updates.js'), 'utf8');
   assert.equal(src.includes('electron-updater'), false);

@@ -26,6 +26,27 @@ test('update needed appears only for a newer known version and still does not do
   assert.equal(http.willDownload, false);
 });
 
+test('a mocked newer release still does not download, install, or use the network', () => {
+  let called = false;
+  const result = state.lobbyUpdate({
+    enabled: true,
+    feedUrl: 'https://example.com/omni',
+    currentVersion: '4.3.4',
+    knownNewer: '4.3.6',
+    platform: 'windows',
+    fetch() { called = true; },
+    install() { called = true; }
+  });
+  assert.equal(called, false);
+  assert.equal(result.kind, 'update-needed');
+  assert.equal(result.willDownload, false);
+  assert.equal(result.willInstall, false);
+  assert.equal(result.checksNetwork, false);
+  assert.match(result.detail, /does not download or install/);
+  assert.match(result.detail, /signed installer/);
+  assert.equal(result.detail.includes('up to date'), false);
+});
+
 test('the lobby does not invent a newer version', () => {
   const src = fs.readFileSync(path.join(__dirname, '..', 'lobby.js'), 'utf8');
   assert.match(src, /knownNewer:\s*null/);

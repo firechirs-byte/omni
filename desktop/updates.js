@@ -32,4 +32,14 @@ function checkOnLaunch(configPath) {
   return assess(config);
 }
 
-module.exports = { assess, checkOnLaunch, loadConfig };
+/* A caller may pass fetch and install stand-ins. This copy never calls them. */
+function plan(config, hooks) {
+  const decision = assess(config);
+  return Object.assign({}, decision, {
+    ranFetch: false,
+    ranInstall: false,
+    ignoredHooks: !!(hooks && (hooks.fetch || hooks.install))
+  });
+}
+
+module.exports = { assess, checkOnLaunch, loadConfig, plan };
