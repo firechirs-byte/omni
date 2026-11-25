@@ -356,6 +356,12 @@ body.chat-bubbles .chat-msg.me .rx{background:rgba(255,255,255,.88);color:#1a213
 .ctx-menu>button .i{color:var(--muted)}
 .ctx-menu>button:hover:not(:disabled),.ctx-menu>button:focus-visible{background:var(--hover);outline:none}
 .ctx-menu>button.danger,.ctx-menu>button.danger .i{color:var(--danger)}
+.ctx-sep{height:1px;background:var(--line);margin:4px 6px}
+.ctx-note{padding:6px 10px;color:var(--muted);font-size:.78rem}
+#groupMenuBtn{height:28px;padding:0 8px;border-radius:8px;border:1px solid var(--line);font-size:.75rem;font-weight:700}
+.wizard-choices{display:grid;gap:8px}
+.wizard-choices button,.wizard-row button{text-align:left}
+.wizard-row{display:flex;gap:8px;justify-content:flex-end;margin-top:12px;flex-wrap:wrap}
 .ctx-react{display:flex;gap:1px;padding:2px 2px 6px;margin-bottom:4px;border-bottom:1px solid var(--line)}
 .ctx-react button{width:31px;height:31px;border-radius:6px;font-size:1.1rem;display:grid;place-items:center}
 .ctx-react button:hover,.ctx-react button:focus-visible{background:var(--hover)}
@@ -653,7 +659,10 @@ body.no-motion *,body.no-motion *::before,body.no-motion *::after{transition:non
   body.show-side .side{display:flex;position:fixed;left:60px;top:0;bottom:0;width:min(280px,80vw);z-index:60;box-shadow:var(--float)}
   body.side-right.show-side .side{left:auto;right:60px}
   .topbar{gap:6px;padding:0 8px;overflow:visible}
-  .mode-switch,.topic{display:none}
+  .topic{display:none}
+  .mode-switch{display:flex}
+  .mode-switch .lbl{display:none}
+  .mode-switch button{padding:0 4px}
   .channel-title{min-width:0;flex:1 1 auto;max-width:none;overflow:hidden}
   .video-grid{grid-template-columns:1fr}.tile.screen{grid-column:span 1}
   .bottom-stage{flex-direction:column;flex-basis:auto}

@@ -676,6 +676,112 @@ async function runSelfTest(win) {
     return;
   }
   console.log('OMNI_TOAST_TEST_OK ' + JSON.stringify(toastFit));
+  win.setContentSize(1280, 800);
+  const layout = await win.webContents.executeJavaScript(`(() => {
+    document.body.classList.remove('show-lobby');
+    return {
+      sideModes: !!document.getElementById('sideModes'),
+      modes: [...document.querySelectorAll('#modeSwitch [data-mode]')].map(el => el.dataset.mode).join(',')
+    };
+  })()`);
+  if (layout.sideModes || layout.modes !== 'gaming,school,work,casual') {
+    console.error('mode changer ' + JSON.stringify(layout));
+    app.exit(1);
+    return;
+  }
+  await shot('shell-ui-modes');
+  const wizard = await win.webContents.executeJavaScript(`(async () => {
+    const problems = [];
+    const text = (id) => (document.getElementById(id) || {}).textContent || '';
+    document.getElementById('addServerBtn').click();
+    if (text('modalTitle') !== 'Create a group') problems.push('step1 ' + text('modalTitle'));
+    document.getElementById('wizOwn').click();
+    if (text('modalTitle') !== 'Who is it for?') problems.push('step2 ' + text('modalTitle'));
+    document.getElementById('wizBack').click();
+    if (text('modalTitle') !== 'Create a group') problems.push('back ' + text('modalTitle'));
+    document.getElementById('wizOwn').click();
+    document.getElementById('wizSkip').click();
+    if (text('modalTitle') !== 'Name the group') problems.push('step3 ' + text('modalTitle'));
+    document.getElementById('wizCreate').click();
+    if (!text('wizErr')) problems.push('blank name made a group');
+    document.getElementById('wizBack').click();
+    if (!document.getElementById('wizSkip')) problems.push('back from name failed');
+    document.getElementById('closeModal').click();
+    if (getComputedStyle(document.getElementById('modalBackdrop')).display !== 'none') problems.push('wizard stayed open');
+    return problems;
+  })()`);
+  if (!Array.isArray(wizard) || wizard.length) {
+    console.error(Array.isArray(wizard) ? wizard.join('\n') : 'wizard check failed');
+    app.exit(1);
+    return;
+  }
+  await win.webContents.executeJavaScript(`document.getElementById('addServerBtn').click()`);
+  await shot('shell-ui-wizard-1');
+  await win.webContents.executeJavaScript(`document.getElementById('wizJoin').click()`);
+  await new Promise(resolve => setTimeout(resolve, 80));
+  await shot('shell-ui-wizard-join');
+  await win.webContents.executeJavaScript(`document.getElementById('wizBack').click(); document.getElementById('wizOwn').click()`);
+  await new Promise(resolve => setTimeout(resolve, 80));
+  await shot('shell-ui-wizard-2');
+  await win.webContents.executeJavaScript(`document.getElementById('wizSkip').click()`);
+  await new Promise(resolve => setTimeout(resolve, 80));
+  await shot('shell-ui-wizard-3');
+  await win.webContents.executeJavaScript(`document.getElementById('closeModal').click()`);
+  const member = await win.webContents.executeJavaScript(`(() => {
+    const made = OmniGroups.createGroup(data, { name: 'Visitor club', userId: 'owner-other', channelIds: ['general'] });
+    OmniGroups.joinLocal(data, made.group.inviteCode, currentUserId());
+    saveData();
+    renderServers();
+    const btn = [...document.querySelectorAll('[data-server]')].find(el => el.dataset.server === 'Visitor club');
+    const rect = btn.getBoundingClientRect();
+    openGroupMenu('Visitor club', rect.left, rect.bottom);
+    const acts = [...document.querySelectorAll('#groupMenu [data-group-act]')].map(el => el.dataset.groupAct);
+    return { acts, shown: document.getElementById('groupMenu').classList.contains('show') };
+  })()`);
+  if (!member.shown || member.acts.join(',') !== 'copy-invite,leave') {
+    console.error('member menu ' + JSON.stringify(member));
+    app.exit(1);
+    return;
+  }
+  await shot('shell-ui-member-menu');
+  const leftGroup = await win.webContents.executeJavaScript(`(() => {
+    document.querySelector('#groupMenu [data-group-act="leave"]').click();
+    const asking = document.getElementById('modalTitle').textContent;
+    document.getElementById('closeModal').click();
+    const still = !!document.querySelector('[data-server="Visitor club"]');
+    openGroupMenu('Visitor club', 40, 120);
+    document.querySelector('#groupMenu [data-group-act="leave"]').click();
+    document.getElementById('confirmModal').click();
+    const gone = !document.querySelector('[data-server="Visitor club"]');
+    const kept = !!(data.servers['Visitor club'] && data.servers['Visitor club'].channels.general);
+    const ownerStill = data.servers['Visitor club'].memberIds.includes('owner-other');
+    return { asking, still, gone, kept, ownerStill, server: data.server };
+  })()`);
+  if (leftGroup.asking.indexOf('Leave') !== 0 || !leftGroup.still || !leftGroup.gone || !leftGroup.kept || !leftGroup.ownerStill) {
+    console.error('leave ' + JSON.stringify(leftGroup));
+    app.exit(1);
+    return;
+  }
+  win.setContentSize(720, 576);
+  await new Promise(resolve => setTimeout(resolve, 120));
+  const narrowModes = await win.webContents.executeJavaScript(`(() => {
+    const bar = document.querySelector('.topbar');
+    const mode = document.querySelector('#modeSwitch');
+    const side = document.getElementById('channelSidebar');
+    return {
+      modes: getComputedStyle(mode).display,
+      side: getComputedStyle(side).display,
+      clipped: bar.scrollWidth > bar.clientWidth + 2,
+      width: window.innerWidth
+    };
+  })()`);
+  if (narrowModes.width > 780 || narrowModes.modes === 'none' || narrowModes.side !== 'none' || narrowModes.clipped) {
+    console.error('narrow modes ' + JSON.stringify(narrowModes));
+    app.exit(1);
+    return;
+  }
+  await shot('shell-ui-gaming-720-modes');
+  console.log('OMNI_GROUP_TEST_OK');
   capturingPage = true;
   let page;
   try {

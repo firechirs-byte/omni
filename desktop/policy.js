@@ -8,7 +8,7 @@ const ROOT_FILES = new Set([
   'index.html', 'styles.css', 'manifest.webmanifest', 'icon.svg',
   'config.js', 'sounds.js', 'filter-words.js', 'filter.js', 'emoji.js',
   'icons.js', 'app.js', 'media.js', 'extras.js', 'safety.js', 'browser.js',
-  'firebase.js', 'assistant.js', 'auth-gate.js', 'connections.js', 'update-state.js', 'nav-path.js', 'lobby.js'
+  'firebase.js', 'assistant.js', 'auth-gate.js', 'connections.js', 'update-state.js', 'nav-path.js', 'lobby.js', 'groups.js'
 ]);
 const ROOT_DIRS = new Set(['fonts', 'icons', 'gifs']);
 const ALLOWED_EXT = new Set([

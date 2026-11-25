@@ -251,15 +251,25 @@ function freshData(mode) {
   return { server: m.servers[0], servers, dms: {}, files: [], tasks: [], role: m.roles[0] };
 }
 // Load a mode's data and patch in anything missing
+function currentUserId() {
+  if (typeof Online !== 'undefined' && Online.uid) return Online.uid;
+  if (!settings.localUserId) {
+    settings.localUserId = 'local-' + Math.random().toString(36).slice(2, 10);
+    saveSettings();
+  }
+  return settings.localUserId;
+}
 function loadData(mode) {
-  const d = load(dataKey(mode), null);
-  if (!d || !d.servers || !Object.keys(d.servers).length) return freshData(mode);
-  d.dms ||= {}; d.files ||= []; d.tasks ||= []; d.role ||= MODES[mode].roles[0];
-  if (!d.servers[d.server]) d.server = Object.keys(d.servers)[0];
-  // v3 left "message deleted" notes behind; deleted messages now vanish completely
-  const tidy = arr => Array.isArray(arr) ? arr.filter(m => m && !m.deleted) : [];
-  Object.values(d.servers).forEach(sv => Object.keys(sv.channels).forEach(c => sv.channels[c] = tidy(sv.channels[c])));
-  Object.values(d.dms).forEach(dm => dm.msgs = tidy(dm.msgs));
+  let d = load(dataKey(mode), null);
+  if (!d || !d.servers || !Object.keys(d.servers).length) d = freshData(mode);
+  else {
+    d.dms ||= {}; d.files ||= []; d.tasks ||= []; d.role ||= MODES[mode].roles[0];
+    if (!d.servers[d.server]) d.server = Object.keys(d.servers)[0];
+    const tidy = arr => Array.isArray(arr) ? arr.filter(m => m && !m.deleted) : [];
+    Object.values(d.servers).forEach(sv => Object.keys(sv.channels || {}).forEach(c => sv.channels[c] = tidy(sv.channels[c])));
+    Object.values(d.dms).forEach(dm => dm.msgs = tidy(dm.msgs));
+  }
+  if (typeof OmniGroups !== 'undefined') OmniGroups.normalizeStore(d, currentUserId());
   return d;
 }
 
@@ -363,12 +373,15 @@ function renderModeSwitch() {
   const buttons = Object.entries(MODES).map(([key, m]) =>
     `<button type="button" data-mode="${key}" class="${key === settings.mode ? 'active' : ''}" title="${esc(m.name)} mode" aria-pressed="${key === settings.mode}">${icon(m.icon)}<span class="lbl">${esc(m.name)}</span></button>`).join('');
   $('#modeSwitch').innerHTML = buttons;
-  const side = $('#sideModes');
-  if (side) side.innerHTML = buttons;
 }
 
 function renderServers() {
-  $('#serverList').innerHTML = Object.keys(data.servers).map(name =>
+  const names = typeof OmniGroups !== 'undefined' ? OmniGroups.visibleNames(data.servers, currentUserId()) : Object.keys(data.servers);
+  if (names.length && !names.includes(data.server)) {
+    data.server = names[0];
+    view = { type: 'channel', id: Object.keys(data.servers[data.server].channels)[0] };
+  }
+  $('#serverList').innerHTML = names.map(name =>
     `<button class="dot ${name === data.server ? 'active' : ''} ${data.servers[name].online ? 'online-server' : ''}" data-server="${esc(name)}" title="${esc(name)}">` +
     `${data.servers[name].online ? icon('globe') : esc(serverLabel(name))}</button>`).join('');
   $('#workspaceName').textContent = data.server;
@@ -572,6 +585,7 @@ $('#confirmModal').onclick = () => { Promise.resolve(modalDone()).then(r => { if
 $('#modalBackdrop').onclick = e => { if (e.target.id === 'modalBackdrop') closeModal(); };
 document.addEventListener('keydown', e => {
   if (e.key !== 'Escape') return;
+  if (typeof closeGroupMenu === 'function' && closeGroupMenu()) return;
   if (typeof closeMenu === 'function' && (closeMenu() || closePops())) return;   // menus/pop-ups first (extras.js)
   closeModal(); $('#customize').classList.remove('open');
 });
@@ -602,14 +616,183 @@ $('#menuBtn').onclick = () => {
 };
 $('#homeBtn').onclick = () => { openChannel(Object.keys(srv().channels)[0]); toast('Home'); };
 
-$('#addServerBtn').onclick = () => modal(M().labels.addServer, 'Give it a name. It starts with this mode\'s usual channels.',
-  '<div class="modal-card wide"><input id="newServer" class="modal-input" placeholder="Name" maxlength="28"></div>', () => {
-    const n = $('#newServer').value.trim(); if (!n) return;
-    if (guard(n, 'name') === null) return false;
-    if (data.servers[n]) { toast('That name is already used'); return false; }
-    data.servers[n] = { channels: Object.fromEntries(M().channels.map(c => [c.id, []])) };
-    data.server = n; saveData(); renderServers(); openChannel(Object.keys(srv().channels)[0]);
-  });
+function templateChannelIds(template) {
+  const info = OmniGroups.TEMPLATES[template];
+  const mode = info ? info.mode : settings.mode;
+  return MODES[mode].channels.map(c => c.id);
+}
+function finishCreate(name, message) {
+  data.server = name;
+  saveData();
+  renderServers();
+  openChannel(Object.keys(srv().channels)[0]);
+  closeModal();
+  toast(message || ('Created ' + name));
+}
+function openCreateWizard() {
+  let state = OmniGroups.wizardStart();
+  modal('Create a group', '', '', null, '');
+  const paint = () => {
+    const err = state.error ? `<p class="form-error" id="wizErr">${esc(state.error)}</p>` : '<p class="form-error" id="wizErr"></p>';
+    let body = '';
+    if (state.step === 1) {
+      $('#modalTitle').textContent = 'Create a group';
+      $('#modalCopy').textContent = 'Start a place for chats on this device, or join one with a code.';
+      const templates = Object.entries(OmniGroups.TEMPLATES).map(([id, info]) =>
+        `<button type="button" class="item" data-wiz-template="${id}">${esc(info.label)}</button>`).join('');
+      body = `<div class="modal-card wide wizard-choices"><button type="button" class="confirm" id="wizOwn">Start a blank group</button>${templates}` +
+        `<button type="button" class="close" id="wizJoin">Join a group</button></div>${err}`;
+    } else if (state.step === 2) {
+      $('#modalTitle').textContent = 'Who is it for?';
+      $('#modalCopy').textContent = 'You can skip this. It only labels the group.';
+      body = `<div class="modal-card wide wizard-choices"><button type="button" class="item" id="wizFriends">Friends</button>` +
+        `<button type="button" class="item" id="wizCommunity">Club or community</button></div>` +
+        `<div class="wizard-row"><button type="button" class="close" id="wizBack">Back</button><button type="button" class="close" id="wizSkip">Skip</button></div>${err}`;
+    } else if (state.step === 'join') {
+      $('#modalTitle').textContent = 'Join a group';
+      $('#modalCopy').textContent = 'Use an invite code from someone in the group.';
+      body = `<div class="modal-card wide"><input id="wizCode" class="modal-input" maxlength="8" placeholder="Invite code" autocomplete="off"></div>` +
+        `<div class="wizard-row"><button type="button" class="close" id="wizBack">Back</button><button type="button" class="confirm" id="wizDoJoin">Join</button></div>${err}`;
+    } else {
+      $('#modalTitle').textContent = 'Name the group';
+      $('#modalCopy').textContent = 'The name is required. A picture is optional.';
+      body = `<div class="modal-card wide"><label>Picture <input id="wizIcon" type="file" accept="image/png,image/jpeg,image/webp"></label>` +
+        `<label>Name <input id="wizName" class="modal-input" maxlength="28" value="${esc(state.name)}" autocomplete="off"></label></div>` +
+        `<div class="wizard-row"><button type="button" class="close" id="wizBack">Back</button><button type="button" class="confirm" id="wizCreate">Create</button></div>${err}`;
+    }
+    $('#modalGrid').innerHTML = body;
+    const set = (next) => { state = next; paint(); };
+    const own = $('#wizOwn'); if (own) own.onclick = () => set(OmniGroups.wizardOwn(state));
+    $$('[data-wiz-template]').forEach(btn => btn.onclick = () => set(OmniGroups.wizardTemplate(state, btn.dataset.wizTemplate)));
+    const join = $('#wizJoin'); if (join) join.onclick = () => set(OmniGroups.wizardJoin(state));
+    const back = $('#wizBack'); if (back) back.onclick = () => set(OmniGroups.wizardBack(state));
+    const skip = $('#wizSkip'); if (skip) skip.onclick = () => set(OmniGroups.wizardSkip(state));
+    const friends = $('#wizFriends'); if (friends) friends.onclick = () => set(OmniGroups.wizardKind(state, 'friends'));
+    const community = $('#wizCommunity'); if (community) community.onclick = () => set(OmniGroups.wizardKind(state, 'community'));
+    const icon = $('#wizIcon');
+    if (icon) icon.onchange = () => {
+      const file = icon.files && icon.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => { state = OmniGroups.wizardIcon(state, String(reader.result || '')); paint(); };
+      reader.readAsDataURL(file);
+    };
+    const create = $('#wizCreate');
+    if (create) create.onclick = () => {
+      const name = $('#wizName').value;
+      if (guard(name, 'name') === null) return;
+      const made = OmniGroups.createGroup(data, {
+        name, userId: currentUserId(), channelIds: templateChannelIds(state.template),
+        icon: state.icon, kind: state.kind, template: state.template || 'own'
+      });
+      if (!made.ok) { state = Object.assign({}, state, { name, error: made.message }); paint(); return; }
+      finishCreate(made.name);
+    };
+    const doJoin = $('#wizDoJoin');
+    if (doJoin) doJoin.onclick = async () => {
+      const code = $('#wizCode').value;
+      doJoin.disabled = true; doJoin.textContent = 'Checking…';
+      const local = OmniGroups.joinLocal(data, code, currentUserId());
+      if (local.ok) { finishCreate(local.name, 'Joined ' + local.name); return; }
+      if (typeof Online !== 'undefined' && Online.ready) {
+        try { const chat = await Online.joinChat(code); goOnline(chat); closeModal(); return; }
+        catch (e) { state = Object.assign({}, state, { error: e.message || String(e) }); paint(); return; }
+      }
+      state = Object.assign({}, state, { error: local.message }); paint();
+    };
+  };
+  paint();
+}
+$('#addServerBtn').onclick = () => openCreateWizard();
+
+let groupMenuName = '';
+function closeGroupMenu() {
+  const menu = $('#groupMenu');
+  if (!menu || !menu.classList.contains('show')) return false;
+  menu.classList.remove('show');
+  menu.hidden = true;
+  return true;
+}
+function openGroupMenu(name, x, y) {
+  const group = data.servers[name];
+  if (!group) return;
+  const plan = OmniGroups.menuFor(group, currentUserId());
+  if (plan.role === 'none') { toast('You are not a member of that group.'); return; }
+  groupMenuName = name;
+  const sep = plan.items.some(item => item.id === 'leave') && plan.items.length > 1 ? '<div class="ctx-sep"></div>' : '';
+  const leave = plan.items.filter(item => item.id === 'leave').map(item =>
+    `<button type="button" role="menuitem" class="danger" data-group-act="leave">${esc(item.label)}</button>`).join('');
+  const rest = plan.items.filter(item => item.id !== 'leave').map(item =>
+    `<button type="button" role="menuitem" data-group-act="${item.id}">${esc(item.label)}</button>`).join('');
+  const menu = $('#groupMenu');
+  menu.innerHTML = rest + (rest && leave ? sep : '') + leave + (plan.note ? `<p class="ctx-note">${esc(plan.note)}</p>` : '');
+  menu.hidden = false;
+  menu.classList.add('show');
+  menu.style.left = '0px'; menu.style.top = '0px';
+  const rect = menu.getBoundingClientRect();
+  const spot = OmniGroups.clampMenu(x, y, rect.width, rect.height, innerWidth, innerHeight);
+  menu.style.left = spot.left + 'px';
+  menu.style.top = spot.top + 'px';
+  const first = menu.querySelector('button');
+  if (first) first.focus();
+}
+function askLeaveGroup(name) {
+  const plan = OmniGroups.menuFor(data.servers[name], currentUserId());
+  if (!plan.items.some(item => item.id === 'leave')) {
+    toast(plan.role === 'owner' ? 'Owners stay with the group they started.' : 'You cannot leave that group.');
+    return;
+  }
+  modal('Leave ' + name, 'You leave the group. It stays for the other members, including its channels.',
+    '<p class="form-error" id="leaveErr"></p>', () => {
+      const out = OmniGroups.leaveGroup(data, name, currentUserId());
+      if (!out.ok) { $('#leaveErr').textContent = out.error === 'owner' ? 'Owners stay with the group they started.' : 'You cannot leave that group.'; return false; }
+      const next = OmniGroups.visibleNames(data.servers, currentUserId());
+      if (data.server === name && next[0]) {
+        data.server = next[0];
+        saveData();
+        renderAll();
+      } else saveData();
+      renderServers();
+      toast('You left ' + name);
+    }, 'Leave group');
+}
+document.addEventListener('contextmenu', e => {
+  const el = e.target.closest('[data-server]');
+  if (!el) return;
+  e.preventDefault();
+  e.stopPropagation();
+  openGroupMenu(el.dataset.server, e.clientX || 24, e.clientY || 24);
+});
+document.addEventListener('keydown', e => {
+  const el = e.target.closest && e.target.closest('[data-server]');
+  if (!el) return;
+  if (e.key !== 'ContextMenu' && !(e.shiftKey && e.key === 'F10')) return;
+  e.preventDefault();
+  const rect = el.getBoundingClientRect();
+  openGroupMenu(el.dataset.server, rect.left, rect.bottom);
+});
+$('#groupMenuBtn').onclick = () => {
+  const rect = $('#groupMenuBtn').getBoundingClientRect();
+  openGroupMenu(data.server, rect.left, rect.bottom + 4);
+};
+$('#groupMenu').onclick = e => {
+  const btn = e.target.closest('[data-group-act]');
+  if (!btn) return;
+  const name = groupMenuName;
+  const act = btn.dataset.groupAct;
+  closeGroupMenu();
+  if (act === 'copy-invite') {
+    const code = data.servers[name] && data.servers[name].inviteCode;
+    if (!code) return;
+    const done = () => toast('Invite code ' + code);
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(code).then(done, done);
+    else done();
+  } else if (act === 'leave') askLeaveGroup(name);
+};
+document.addEventListener('pointerdown', e => {
+  const menu = $('#groupMenu');
+  if (menu && !menu.contains(e.target) && e.target.id !== 'groupMenuBtn') closeGroupMenu();
+});
 
 $('#addChannelBtn').onclick = () => modal(M().labels.addChannel, 'Create a channel in ' + data.server + '.',
   '<div class="modal-card wide"><input id="newChannel" class="modal-input" placeholder="channel-name" maxlength="32"></div>', () => {

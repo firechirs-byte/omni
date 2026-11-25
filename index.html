@@ -29,14 +29,11 @@
   <!-- 2. Sidebar: channels + direct messages + your profile -->
   <aside class="side" id="channelSidebar" aria-label="Channels and messages">
     <div class="workspace">
-      <div class="ws-text"><div class="ws-name" id="workspaceName">Server</div><div class="tiny" data-label="workspaceTag">community</div></div>
+        <div class="ws-text"><div class="ws-name" id="workspaceName">Server</div><div class="tiny" data-label="workspaceTag">community</div></div>
+      <button class="text-btn" id="groupMenuBtn" type="button" aria-haspopup="menu" aria-controls="groupMenu">Group</button>
       <button class="icon-btn" id="workspaceBtn" title="Workspace options" aria-label="Workspace options"><i data-icon="chevron"></i></button>
     </div>
     <div class="side-scroll">
-      <div class="group">
-        <div class="section">Modes</div>
-        <div id="sideModes" class="side-modes" role="group" aria-label="Choose a mode"></div>
-      </div>
       <div class="group channel-group">
         <div class="section" data-label="channels">Channels</div>
         <div id="channelList"></div>
@@ -235,6 +232,7 @@
 
 <!-- Pop-up message in the corner -->
 <div class="toast" id="toast" role="status"></div>
+<div class="ctx-menu" id="groupMenu" role="menu" hidden></div>
 
 <!-- Re-usable pop-up window (settings, search, safety...) -->
 <div class="modal-backdrop" id="modalBackdrop">
@@ -349,6 +347,7 @@
 <script src="filter.js"></script>
 <script src="emoji.js"></script>
 <script src="icons.js"></script>
+<script src="groups.js"></script>
 <script src="app.js"></script>
 <script src="media.js"></script>
 <script src="extras.js"></script>

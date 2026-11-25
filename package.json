@@ -8,7 +8,7 @@
   "author": "Omni",
   "scripts": {
     "start": "electron .",
-    "test": "node --test desktop/policy.test.js desktop/cues.test.js desktop/auth-gate.test.js desktop/updates.test.js desktop/connections.test.js desktop/update-state.test.js desktop/nav-path.test.js desktop/shell.test.js desktop/download-offer.test.js desktop/mac-config.test.js",
+    "test": "node --test desktop/policy.test.js desktop/cues.test.js desktop/auth-gate.test.js desktop/updates.test.js desktop/connections.test.js desktop/update-state.test.js desktop/nav-path.test.js desktop/shell.test.js desktop/groups.test.js desktop/download-offer.test.js desktop/mac-config.test.js",
     "smoke": "electron . --omni-self-test",
     "pack:win": "electron-builder --win nsis portable --x64",
     "pack:win:zip": "electron-builder --win zip --x64",
