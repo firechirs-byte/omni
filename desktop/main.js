@@ -565,6 +565,42 @@ async function runSelfTest(win) {
   }
   console.log('OMNI_JOINED_DOM ' + JSON.stringify(joined));
   console.log('OMNI_LEFT_DOM ' + JSON.stringify(left));
+  const uiShots = [
+    { name: 'ui-gaming-1280', w: 1280, h: 800, mode: 'gaming' },
+    { name: 'ui-school-1280', w: 1280, h: 800, mode: 'school' },
+    { name: 'ui-work-1280', w: 1280, h: 800, mode: 'work' },
+    { name: 'ui-casual-1280', w: 1280, h: 800, mode: 'casual' },
+    { name: 'ui-gaming-1024', w: 1024, h: 576, mode: 'gaming' },
+    { name: 'ui-gaming-720', w: 720, h: 576, mode: 'gaming' }
+  ];
+  for (const item of uiShots) {
+    win.setContentSize(item.w, item.h);
+    const report = await win.webContents.executeJavaScript(`(() => {
+      document.body.classList.remove('show-lobby');
+      document.querySelector('[data-mode="${item.mode}"]').click();
+      const chat = getComputedStyle(document.getElementById('chatStage'));
+      const grid = getComputedStyle(document.querySelector('.video-grid'));
+      const meeting = document.getElementById('meetingPanel').getBoundingClientRect();
+      const stage = document.getElementById('chatStage').getBoundingClientRect();
+      return {
+        mode: document.getElementById('whereMode').textContent,
+        chat: chat.display,
+        grid: grid.display,
+        chatTaller: stage.height > meeting.height,
+        peopleHidden: getComputedStyle(document.querySelector('.right')).display === 'none',
+        boardHidden: getComputedStyle(document.querySelector('.bottom-stage')).display === 'none',
+        modes: [...document.querySelectorAll('#sideModes button')].map(b => b.textContent.replace(/\\s+/g, ' ').trim())
+      };
+    })()`);
+    if (report.mode !== item.mode[0].toUpperCase() + item.mode.slice(1) || report.chat !== 'flex' || report.grid !== 'none' || !report.chatTaller || !report.peopleHidden || !report.boardHidden) {
+      console.error('ui ' + item.name + ' ' + JSON.stringify(report));
+      app.exit(1);
+      return;
+    }
+    await new Promise(resolve => setTimeout(resolve, 120));
+    await shot('shell-' + item.name);
+  }
+  console.log('OMNI_SHELL_TEST_OK');
   capturingPage = true;
   let page;
   try {

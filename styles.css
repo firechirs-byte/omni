@@ -194,13 +194,26 @@ body.no-right .right{display:none}
 .big-chat{flex:1;overflow:auto;padding:18px}
 body.layout-chat .chat-stage,body.hide-meeting .chat-stage{display:flex}
 body.layout-chat #chatPanel,body.hide-meeting #chatPanel{display:none}
-body.layout-chat .meeting{flex:0 0 auto;flex-direction:row;align-items:center}
-body.layout-chat .video-grid{display:none}
+body.layout-chat .meeting:not(.in-call){flex:0 0 auto;flex-direction:row;align-items:center}
+body.layout-chat .meeting.in-call{flex:0 1 38%;min-height:180px;max-height:320px;flex-direction:column}
+body.layout-chat .meeting:not(.in-call) .video-grid{display:none}
+body.layout-chat .meeting.in-call .video-grid{display:grid;min-height:120px}
 body.layout-chat .meeting:not(.in-call) .call-idle{display:flex;align-items:center;gap:12px;padding:8px 14px;text-align:left}
+body.layout-chat .meeting:not(.in-call) .call-idle h2{font-size:1rem;margin:0}
 body.layout-chat .meeting:not(.in-call) .call-idle p{margin:0}
-body.layout-chat .meeting-head{flex:1}
+body.layout-chat .meeting:not(.in-call) .meeting-head{flex:1}
 body.layout-chat .meeting-controls{border:0}
-body.layout-chat .meeting-controls .label{display:none}
+body:not(.people-open) .content{grid-template-columns:minmax(0,1fr)}
+body:not(.people-open) .right{display:none}
+body:not(.board-open) .bottom-stage{display:none}
+.where-mode{font-size:.72rem;font-weight:700;color:var(--accent);letter-spacing:.02em}
+.side-modes{display:grid;gap:4px;padding:0 8px 8px}
+.side-modes button{display:flex;align-items:center;gap:8px;width:100%;text-align:left;padding:8px 10px;border-radius:8px;color:var(--muted);font-weight:650}
+.side-modes button.active{background:color-mix(in srgb,var(--accent) 22%,var(--panel));color:var(--text);box-shadow:inset 3px 0 0 var(--accent)}
+.side-modes button:hover{background:var(--hover);color:var(--text)}
+#peopleToggle,#boardToggle,#lobbyBtn{height:34px;padding:0 10px;border-radius:8px;border:1px solid var(--line);font-size:.82rem;font-weight:700;color:var(--text);white-space:nowrap}
+#peopleToggle[aria-pressed="true"],#boardToggle[aria-pressed="true"]{background:color-mix(in srgb,var(--accent) 22%,var(--panel));border-color:var(--accent)}
+button:focus-visible,.item:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 
 .bottom-stage{flex:0 0 170px;background:var(--panel);border:1px solid var(--line);border-radius:var(--r);overflow:hidden;display:flex}
 .whiteboard{flex:1.15;position:relative;background:#f7f6f2;color:#22252a;padding:calc(14px*var(--d)) 15px;min-width:0}
@@ -583,6 +596,15 @@ body.mode-casual .mode-switch button.active::after{left:50%;right:auto;width:6px
 body.mode-casual .item.active,body.mode-casual .dm-item.active{border-radius:999px}
 body.mode-casual .rail .dot{border-radius:50%}
 body.mode-casual .meeting{border:0}
+
+/* Shared shell: one dark neutral frame. The mode accent still marks the current place. */
+body.mode-gaming .rail .dot,body.mode-gaming .rail .home,body.mode-gaming .send,body.mode-gaming .ctrl,body.mode-gaming .confirm,body.mode-gaming .mini-add{clip-path:none;border-radius:10px}
+body.mode-school .meeting,body.mode-school .bottom-stage,body.mode-school .chat-stage,body.mode-work .meeting,body.mode-work .bottom-stage,body.mode-work .chat-stage,body.mode-casual .chat-stage{border-radius:12px;border:1px solid var(--line);box-shadow:none}
+body.mode-work h1,body.mode-work h2,body.mode-work h3,body.mode-work .ws-name,body.mode-work .section,body.mode-gaming :is(.section,.pill,.live,.meeting-count){text-transform:none;letter-spacing:0;font-family:var(--font)}
+body.mode-work .item.active,body.mode-school .item.active,body.mode-casual .item.active,body.mode-gaming .item.active{background:color-mix(in srgb,var(--accent) 22%,var(--panel));color:var(--text);box-shadow:inset 3px 0 0 var(--accent);border-radius:8px}
+body.mode-school .big-chat,body.mode-school #chatList,body.mode-casual .big-chat{background-image:none}
+body.mode-work .topbar{border-top:0;border-image:none}
+body.mode-school .channel-title h1{text-decoration:none}
 
 /* ---------- 14. Options from Customize ---------- */
 /* icon style */

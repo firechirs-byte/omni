@@ -33,6 +33,10 @@
       <button class="icon-btn" id="workspaceBtn" title="Workspace options" aria-label="Workspace options"><i data-icon="chevron"></i></button>
     </div>
     <div class="side-scroll">
+      <div class="group">
+        <div class="section">Modes</div>
+        <div id="sideModes" class="side-modes" role="group" aria-label="Choose a mode"></div>
+      </div>
       <div class="group channel-group">
         <div class="section" data-label="channels">Channels</div>
         <div id="channelList"></div>
@@ -57,11 +61,13 @@
   <main class="main">
     <header class="topbar">
       <button class="icon-btn" id="menuBtn" title="Channels" aria-label="Show channels"><i data-icon="menu"></i></button>
-      <div class="channel-title"><span class="hash" id="channelIcon"></span><h1 id="channelName">general</h1></div>
+      <div class="channel-title"><span class="hash" id="channelIcon"></span><div><div class="where-mode" id="whereMode">Gaming</div><h1 id="channelName">general</h1></div></div>
       <div class="topic" id="topic"></div>
       <!-- The mode picker. app.js fills in the 4 buttons from the MODES list -->
       <nav class="mode-switch" id="modeSwitch" aria-label="Choose a mode"></nav>
       <div class="top-actions">
+        <button class="text-btn" id="peopleToggle" type="button" aria-pressed="false">People</button>
+        <button class="text-btn" id="boardToggle" type="button" aria-pressed="false">Board &amp; files</button>
         <button class="icon-btn" id="membersBtn" title="People" aria-label="People"><i data-icon="users"></i></button>
         <button class="icon-btn" id="callBtn" title="Join voice" aria-label="Join voice"><i data-icon="phone"></i></button>
         <button class="icon-btn" id="videoBtn" title="Camera" aria-label="Camera"><i data-icon="video"></i></button>

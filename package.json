@@ -1,14 +1,14 @@
 {
   "name": "omni",
   "productName": "Omni",
-  "version": "4.3.7",
+  "version": "4.3.8",
   "private": true,
   "description": "Omni desktop shell. The website in this folder stays the GitHub Pages app.",
   "main": "desktop/main.js",
   "author": "Omni",
   "scripts": {
     "start": "electron .",
-    "test": "node --test desktop/policy.test.js desktop/cues.test.js desktop/auth-gate.test.js desktop/updates.test.js desktop/connections.test.js desktop/update-state.test.js desktop/nav-path.test.js desktop/download-offer.test.js desktop/mac-config.test.js",
+    "test": "node --test desktop/policy.test.js desktop/cues.test.js desktop/auth-gate.test.js desktop/updates.test.js desktop/connections.test.js desktop/update-state.test.js desktop/nav-path.test.js desktop/shell.test.js desktop/download-offer.test.js desktop/mac-config.test.js",
     "smoke": "electron . --omni-self-test",
     "pack:win": "electron-builder --win nsis portable --x64",
     "pack:win:zip": "electron-builder --win zip --x64",

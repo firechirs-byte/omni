@@ -278,6 +278,8 @@ Build steps, the exact commands, and the limits of what was run off a Windows PC
 
 **v4.3.1:** Leave on a lounge (and the meeting Leave button) hangs up. The microphone, camera and screen share stop, the lounge no longer says "You are here", and you can join again. If the microphone is blocked, Join does not leave you in the lounge. Sounds are shorter and quieter. The volume slider and the message, call and update switches are still there. Online text chats are not left when you leave a call. There is still no multi-person call.
 
+**v4.3.8:** Gaming, School, Work, and Casual share one dark shell. Chat fills the center, Join Call stays in a short bar until you join, and People and Board & files open from labeled buttons. No 4.3.8 app was packed.
+
 **v4.3.7:** The lobby says this copy does not update itself, and names Lobby, Connections, and Back to Lobby. It does not download or install an update. The test zips are `Omni-4.3.7-win.zip` and `Omni-4.3.7-mac-arm64.zip`. The Mac zip is unsigned.
 
 **v4.3.6:** Create account on the desktop login screen opens the signup form on top of that screen. The Apple Silicon test zip is `Omni-4.3.6-mac-arm64.zip`. It was packed on Linux and is not a signed Mac app.

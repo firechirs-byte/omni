@@ -23,7 +23,7 @@
 
 /* Omni's version number. When you release a change, bump this AND the
    CACHE name in sw.js, so everyone gets the "Update available" banner. */
-const APP_VERSION = '4.3.7';
+const APP_VERSION = '4.3.8';
 /* Set by the Windows shell (desktop/main.js). The website never sends this. */
 const DESKTOP = /\bOmniDesktop\//.test(navigator.userAgent);
 const PUBLIC_WEB_URL = 'https://firechirs-byte.github.io/omni/';
@@ -70,10 +70,10 @@ const MODES = {
     emphasize: ['micBtn', 'callBtn'],                 // voice-first
     panelOrder: ['people', 'extra', 'breakouts', 'chat'],
     theme: {
-      accent: '#c6f432', accent2: '#ff5c7a', bg: '#0c0f11', panel: '#14191c', text: '#e8eee9',
-      font: 'inter', headFont: 'space', fontSize: 14, letterSpacing: 0, lineHeight: 145, radius: 6, density: 'comfortable',
-      msgWidth: 900, sideWidth: 240, avatarShape: 'hex', iconStyle: 'line', grain: 25, motion: 'on', bgDim: 45, bgBlur: 0,
-      layout: 'meeting', sidebar: 'left', chatStyle: 'list',
+      accent: '#c6f432', accent2: '#ff8a9a', bg: '#121417', panel: '#1c1f24', text: '#f2f3f5',
+      font: 'inter', headFont: 'space', fontSize: 15, letterSpacing: 0, lineHeight: 150, radius: 10, density: 'comfortable',
+      msgWidth: 900, sideWidth: 248, avatarShape: 'circle', iconStyle: 'line', grain: 8, motion: 'on', bgDim: 45, bgBlur: 0,
+      layout: 'chat', sidebar: 'left', chatStyle: 'list',
       panels: { meeting: true, people: true, breakouts: true, chat: true, extra: true, whiteboard: true, files: true }
     }
   },
@@ -100,10 +100,10 @@ const MODES = {
     emphasize: ['raiseBtn'],
     panelOrder: ['extra', 'breakouts', 'people', 'chat'],
     theme: {
-      accent: '#2f5bd3', accent2: '#e4572e', bg: '#f1ece1', panel: '#fffdf7', text: '#22252c',
-      font: 'atkinson', headFont: 'lexend', fontSize: 15, letterSpacing: 0, lineHeight: 155, radius: 12, density: 'comfortable',
-      msgWidth: 820, sideWidth: 250, avatarShape: 'circle', iconStyle: 'sketch', grain: 25, motion: 'on', bgDim: 55, bgBlur: 4,
-      layout: 'meeting', sidebar: 'left', chatStyle: 'list',
+      accent: '#7aa2ff', accent2: '#e7a15a', bg: '#121417', panel: '#1c1f24', text: '#f2f3f5',
+      font: 'atkinson', headFont: 'lexend', fontSize: 16, letterSpacing: 0, lineHeight: 155, radius: 10, density: 'comfortable',
+      msgWidth: 820, sideWidth: 248, avatarShape: 'circle', iconStyle: 'line', grain: 8, motion: 'on', bgDim: 45, bgBlur: 0,
+      layout: 'chat', sidebar: 'left', chatStyle: 'list',
       panels: { meeting: true, people: true, breakouts: true, chat: true, extra: true, whiteboard: true, files: true }
     }
   },
@@ -130,10 +130,10 @@ const MODES = {
     emphasize: ['uploadBtn', 'attachBtn'],           // file sharing
     panelOrder: ['extra', 'people', 'chat', 'breakouts'],
     theme: {
-      accent: '#e85a0c', accent2: '#1f5fbf', bg: '#e3e3de', panel: '#f8f8f5', text: '#1b1e21',
-      font: 'inter', headFont: 'inter', fontSize: 14, letterSpacing: 0, lineHeight: 140, radius: 2, density: 'compact',
-      msgWidth: 1000, sideWidth: 230, avatarShape: 'square', iconStyle: 'bold', grain: 15, motion: 'on', bgDim: 60, bgBlur: 2,
-      layout: 'meeting', sidebar: 'left', chatStyle: 'list',
+      accent: '#ff8a3d', accent2: '#7aa2ff', bg: '#121417', panel: '#1c1f24', text: '#f2f3f5',
+      font: 'inter', headFont: 'inter', fontSize: 15, letterSpacing: 0, lineHeight: 150, radius: 10, density: 'comfortable',
+      msgWidth: 900, sideWidth: 248, avatarShape: 'circle', iconStyle: 'line', grain: 8, motion: 'on', bgDim: 45, bgBlur: 0,
+      layout: 'chat', sidebar: 'left', chatStyle: 'list',
       panels: { meeting: true, people: true, breakouts: false, chat: true, extra: true, whiteboard: true, files: true }
     }
   },
@@ -160,11 +160,11 @@ const MODES = {
     emphasize: [],
     panelOrder: ['people', 'extra', 'breakouts', 'chat'],
     theme: {
-      accent: '#12804a', accent2: '#ff7a59', bg: '#f6eee4', panel: '#fffaf4', text: '#2a2420',
-      font: 'nunito', headFont: 'nunito', fontSize: 15, letterSpacing: 0, lineHeight: 150, radius: 20, density: 'comfortable',
-      msgWidth: 760, sideWidth: 260, avatarShape: 'circle', iconStyle: 'sketch', grain: 25, motion: 'on', bgDim: 35, bgBlur: 6,
+      accent: '#3dbe7a', accent2: '#ff8a3d', bg: '#121417', panel: '#1c1f24', text: '#f2f3f5',
+      font: 'nunito', headFont: 'nunito', fontSize: 16, letterSpacing: 0, lineHeight: 150, radius: 10, density: 'comfortable',
+      msgWidth: 760, sideWidth: 248, avatarShape: 'circle', iconStyle: 'line', grain: 8, motion: 'on', bgDim: 45, bgBlur: 0,
       layout: 'chat', sidebar: 'left', chatStyle: 'bubbles',
-      panels: { meeting: true, people: true, breakouts: false, chat: true, extra: true, whiteboard: false, files: false }
+      panels: { meeting: true, people: true, breakouts: false, chat: true, extra: true, whiteboard: true, files: true }
     }
   }
 };
@@ -320,6 +320,9 @@ function applyTheme() {
   if (!p.whiteboard && !p.files) cls.push('hide-bottom');
   // Hide the whole right column if nothing in it is showing
   if (!p.people && !p.breakouts && !p.extra && !(p.chat && !bigChat)) cls.push('no-right');
+  ['desktop-locked', 'show-lobby', 'show-side', 'people-open', 'board-open'].forEach(name => {
+    if (document.body.classList.contains(name)) cls.push(name);
+  });
   document.body.className = cls.join(' ');
   $('meta[name="theme-color"]').content = t.panel;
   if (typeof showBackground === 'function') showBackground();   // media.js
@@ -357,8 +360,11 @@ function renderLabels() {
 }
 
 function renderModeSwitch() {
-  $('#modeSwitch').innerHTML = Object.entries(MODES).map(([key, m]) =>
-    `<button data-mode="${key}" class="${key === settings.mode ? 'active' : ''}" title="${esc(m.name)} mode" aria-pressed="${key === settings.mode}">${icon(m.icon)}<span class="lbl">${esc(m.name)}</span></button>`).join('');
+  const buttons = Object.entries(MODES).map(([key, m]) =>
+    `<button type="button" data-mode="${key}" class="${key === settings.mode ? 'active' : ''}" title="${esc(m.name)} mode" aria-pressed="${key === settings.mode}">${icon(m.icon)}<span class="lbl">${esc(m.name)}</span></button>`).join('');
+  $('#modeSwitch').innerHTML = buttons;
+  const side = $('#sideModes');
+  if (side) side.innerHTML = buttons;
 }
 
 function renderServers() {
@@ -397,6 +403,7 @@ function renderHeader() {
   const name = isDm ? data.dms[view.id]?.name || view.id : view.id;
   $('#channelIcon').innerHTML = icon(isDm ? 'at' : channelInfo(view.id).icon);
   $('#channelName').textContent = name;
+  if ($('#whereMode')) $('#whereMode').textContent = M().name;
   const onlineTopic = typeof Online !== 'undefined' && Online.topicFor();
   $('#topic').textContent = onlineTopic || (isDm ? 'Direct message · saved on this device only (they can\'t see it until Omni is online)' : channelInfo(view.id).topic);
   $('#messageInput').placeholder = 'Message ' + (isDm ? name : (M().dmsFirst ? '' : '#') + name);
@@ -571,6 +578,19 @@ document.addEventListener('keydown', e => {
 $('#modalGrid').addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.matches('input.modal-input')) $('#confirmModal').click(); });
 
 $('#meAvatar').onclick = () => pickAvatar();   // media.js: choose + crop a profile picture
+function markToggle(id, open) {
+  const el = $('#' + id);
+  if (!el) return;
+  el.setAttribute('aria-pressed', open ? 'true' : 'false');
+}
+$('#peopleToggle').onclick = () => {
+  document.body.classList.toggle('people-open');
+  markToggle('peopleToggle', document.body.classList.contains('people-open'));
+};
+$('#boardToggle').onclick = () => {
+  document.body.classList.toggle('board-open');
+  markToggle('boardToggle', document.body.classList.contains('board-open'));
+};
 $('#menuBtn').onclick = () => document.body.classList.toggle('show-side');   // phones only
 $('#homeBtn').onclick = () => { openChannel(Object.keys(srv().channels)[0]); toast('Home'); };
 
