@@ -678,12 +678,20 @@ async function runSelfTest(win) {
   console.log('OMNI_TOAST_TEST_OK ' + JSON.stringify(toastFit));
   win.setContentSize(1280, 800);
   const layout = await win.webContents.executeJavaScript(`(() => {
-    document.body.classList.remove('show-lobby');
-    return {
-      sideModes: !!document.getElementById('sideModes'),
-      modes: [...document.querySelectorAll('#modeSwitch [data-mode]')].map(el => el.dataset.mode).join(',')
-    };
+    try {
+      document.body.classList.remove('show-lobby');
+      const mode = document.getElementById('modeSwitch');
+      return {
+        sideModes: !!document.getElementById('sideModes'),
+        modes: mode ? [...mode.querySelectorAll('[data-mode]')].map(el => el.getAttribute('data-mode')).join(',') : 'missing'
+      };
+    } catch (e) { return { error: String(e && e.stack || e) }; }
   })()`);
+  if (layout && layout.error) {
+    console.error('mode changer ' + layout.error);
+    app.exit(1);
+    return;
+  }
   if (layout.sideModes || layout.modes !== 'gaming,school,work,casual') {
     console.error('mode changer ' + JSON.stringify(layout));
     app.exit(1);
@@ -727,14 +735,16 @@ async function runSelfTest(win) {
   await new Promise(resolve => setTimeout(resolve, 80));
   await shot('shell-ui-wizard-3');
   await win.webContents.executeJavaScript(`document.getElementById('closeModal').click()`);
+  const club = 'Visitor ' + Date.now();
   const member = await win.webContents.executeJavaScript(`(() => {
-    const made = OmniGroups.createGroup(data, { name: 'Visitor club', userId: 'owner-other', channelIds: ['general'] });
+    const made = OmniGroups.createGroup(data, { name: ${JSON.stringify(club)}, userId: 'owner-other', channelIds: ['general'] });
+    if (!made.ok) return { error: made.message || made.error };
     OmniGroups.joinLocal(data, made.group.inviteCode, currentUserId());
     saveData();
     renderServers();
-    const btn = [...document.querySelectorAll('[data-server]')].find(el => el.dataset.server === 'Visitor club');
+    const btn = [...document.querySelectorAll('[data-server]')].find(el => el.dataset.server === ${JSON.stringify(club)});
     const rect = btn.getBoundingClientRect();
-    openGroupMenu('Visitor club', rect.left, rect.bottom);
+    openGroupMenu(${JSON.stringify(club)}, rect.left, rect.bottom);
     const acts = [...document.querySelectorAll('#groupMenu [data-group-act]')].map(el => el.dataset.groupAct);
     return { acts, shown: document.getElementById('groupMenu').classList.contains('show') };
   })()`);
@@ -748,13 +758,13 @@ async function runSelfTest(win) {
     document.querySelector('#groupMenu [data-group-act="leave"]').click();
     const asking = document.getElementById('modalTitle').textContent;
     document.getElementById('closeModal').click();
-    const still = !!document.querySelector('[data-server="Visitor club"]');
-    openGroupMenu('Visitor club', 40, 120);
+    const still = !!document.querySelector('[data-server=' + JSON.stringify(${JSON.stringify(club)}) + ']');
+    openGroupMenu(${JSON.stringify(club)}, 40, 120);
     document.querySelector('#groupMenu [data-group-act="leave"]').click();
     document.getElementById('confirmModal').click();
-    const gone = !document.querySelector('[data-server="Visitor club"]');
-    const kept = !!(data.servers['Visitor club'] && data.servers['Visitor club'].channels.general);
-    const ownerStill = data.servers['Visitor club'].memberIds.includes('owner-other');
+    const gone = !document.querySelector('[data-server=' + JSON.stringify(${JSON.stringify(club)}) + ']');
+    const kept = !!(data.servers[${JSON.stringify(club)}] && data.servers[${JSON.stringify(club)}].channels.general);
+    const ownerStill = data.servers[${JSON.stringify(club)}].memberIds.includes('owner-other');
     return { asking, still, gone, kept, ownerStill, server: data.server };
   })()`);
   if (leftGroup.asking.indexOf('Leave') !== 0 || !leftGroup.still || !leftGroup.gone || !leftGroup.kept || !leftGroup.ownerStill) {

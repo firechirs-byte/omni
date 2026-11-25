@@ -50,7 +50,7 @@
     const g = normalizeGroup(group, userId);
     const items = [];
     if (who === 'none') return { role: who, items, note: '' };
-    if (g.inviteCode && who !== 'online') items.push({ id: 'copy-invite', label: 'Copy invite code' });
+    if (g.inviteCode && who !== 'online') items.push({ id: 'copy-invite', label: 'Copy device code' });
     if (who === 'member') items.push({ id: 'leave', label: 'Leave group', danger: true });
     const note = who === 'owner' ? 'You started this group, so Leave is not shown.'
       : who === 'online' ? 'Online chats stay in Settings.' : '';
@@ -103,7 +103,10 @@
   function joinLocal(store, rawCode, userId) {
     const invite = String(rawCode || '').trim().toUpperCase();
     if (!/^[A-Z0-9]{8}$/.test(invite)) return { ok: false, error: 'code', message: 'Invite codes are 8 letters or numbers.' };
-    const name = Object.keys(store.servers || {}).find(key => (store.servers[key].inviteCode || '').toUpperCase() === invite);
+    const name = Object.keys(store.servers || {}).find(key => {
+      const group = store.servers[key];
+      return !!group && (group.inviteCode || '').toUpperCase() === invite;
+    });
     if (!name) return { ok: false, error: 'code', message: 'No group on this device uses that code.' };
     const g = normalizeGroup(store.servers[name], userId);
     if (!g.memberIds.includes(userId)) g.memberIds.push(userId);
@@ -136,6 +139,15 @@
     return Object.assign({}, state, { icon: icon || '', error: '' });
   }
 
+  function canLeaveOnline(chat, userId) {
+    if (!chat || !userId) return { ok: false, error: 'unauthorized' };
+    const owner = chat.created_by || chat.createdBy || '';
+    if (owner && owner === userId) return { ok: false, error: 'owner' };
+    const members = chat.memberIds || [];
+    if (members.length && !members.includes(userId)) return { ok: false, error: 'unauthorized' };
+    return { ok: true };
+  }
+
   function clampMenu(x, y, width, height, viewW, viewH) {
     return {
       left: Math.max(8, Math.min(x, viewW - width - 8)),
@@ -146,6 +158,6 @@
   return {
     TEMPLATES, normalizeGroup, normalizeStore, role, visibleNames, menuFor, leaveGroup,
     iconProblem, createGroup, joinLocal, wizardStart, wizardOwn, wizardTemplate, wizardJoin,
-    wizardKind, wizardSkip, wizardBack, wizardIcon, clampMenu
+    wizardKind, wizardSkip, wizardBack, wizardIcon, canLeaveOnline, clampMenu
   };
 });

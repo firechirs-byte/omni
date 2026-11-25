@@ -252,7 +252,7 @@ const Online = (() => {
     stopChats = F.onSnapshot(q, { includeMetadataChanges: true }, snap => {
       const seen = new Set();
       snap.forEach(d => {
-        const c = d.data(); seen.add(d.id);
+        const c = d.data() || {}; seen.add(d.id);
         // a chat you just created isn't on the server yet: wait before listening to it,
         // or the server would say "you're not a member" (it hasn't saved the chat yet)
         if (d.metadata.hasPendingWrites && !OL.channels[d.id]) { seen.delete(d.id); return; }
@@ -442,6 +442,8 @@ const Online = (() => {
   }
   async function leaveChat(id) {
     must();
+    const gate = typeof OmniGroups !== 'undefined' ? OmniGroups.canLeaveOnline(OL.channels[id], uid()) : { ok: true };
+    if (!gate.ok) throw new Error(gate.error === 'owner' ? 'You started this chat, so you stay in it.' : 'You cannot leave that chat.');
     const b = F.writeBatch(db);
     b.update(ref('chats', id), { memberIds: F.arrayRemove(uid()) });
     b.delete(ref('chats', id, 'members', uid()));
@@ -499,7 +501,11 @@ function onlineCardHTML() {
       `Only give it to people you know in real life: it lets them send you direct messages.</span>` +
       `<div class="row"><span class="row-left"><button class="confirm" id="olNewChat">${icon('plus')} New online chat</button><button class="close" id="olJoin">${icon('link')} Join with code</button>` +
       `<button class="close" id="olDM">${icon('at')} Message a friend</button></span><button class="close" id="olOut">${icon('leave')} Sign out</button></div>` +
-      (chats.length ? `<div class="ol-chats">${chats.map(c => `<div class="row"><span>#${esc(c.key || c.name)} · code <b class="code">${esc(c.invite_code)}</b></span><button class="close" data-ol-leave="${esc(c.id)}">Leave</button></div>`).join('')}</div>` : '') +
+      (chats.length ? `<div class="ol-chats">${chats.map(c => {
+        const mine = typeof OmniGroups !== 'undefined' && !OmniGroups.canLeaveOnline(c, Online.uid).ok;
+        return `<div class="row"><span>#${esc(c.key || c.name)} · code <b class="code">${esc(c.invite_code)}</b></span>` +
+          (mine ? '<span>You started this chat</span>' : `<button class="close" data-ol-leave="${esc(c.id)}">Leave</button>`) + '</div>';
+      }).join('')}</div>` : '') +
       `<span class="form-error" id="olErr"></span></div>`;
   }
   return `<div class="modal-card wide">${head()}<span>Sign in to chat with friends online. Your local servers and notes stay on this device.</span>` +

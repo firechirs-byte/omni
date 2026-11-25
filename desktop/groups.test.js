@@ -85,6 +85,14 @@ test('join uses a local invite code and reports a bad code', () => {
   assert.equal(twice.ok, true);
 });
 
+test('an online chat creator cannot leave, and a member can', () => {
+  const chat = { created_by: 'ada', memberIds: ['ada', 'bea'] };
+  assert.equal(groups.canLeaveOnline(chat, 'ada').error, 'owner');
+  assert.equal(groups.canLeaveOnline(chat, 'bea').ok, true);
+  assert.equal(groups.canLeaveOnline(chat, 'cy').error, 'unauthorized');
+  assert.equal(groups.canLeaveOnline(null, 'bea').error, 'unauthorized');
+});
+
 test('the menu stays on screen', () => {
   const spot = groups.clampMenu(900, 700, 200, 120, 800, 600);
   assert.ok(spot.left + 200 <= 792);

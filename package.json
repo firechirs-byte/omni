@@ -1,7 +1,7 @@
 {
   "name": "omni",
   "productName": "Omni",
-  "version": "4.3.8",
+  "version": "4.3.9",
   "private": true,
   "description": "Omni desktop shell. The website in this folder stays the GitHub Pages app.",
   "main": "desktop/main.js",

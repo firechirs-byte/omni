@@ -23,7 +23,7 @@
 
 /* Omni's version number. When you release a change, bump this AND the
    CACHE name in sw.js, so everyone gets the "Update available" banner. */
-const APP_VERSION = '4.3.8';
+const APP_VERSION = '4.3.9';
 /* Set by the Windows shell (desktop/main.js). The website never sends this. */
 const DESKTOP = /\bOmniDesktop\//.test(navigator.userAgent);
 const PUBLIC_WEB_URL = 'https://firechirs-byte.github.io/omni/';
@@ -637,7 +637,7 @@ function openCreateWizard() {
     let body = '';
     if (state.step === 1) {
       $('#modalTitle').textContent = 'Create a group';
-      $('#modalCopy').textContent = 'Start a place for chats on this device, or join one with a code.';
+      $('#modalCopy').textContent = 'This group stays on this device. Its code is not an online invite.';
       const templates = Object.entries(OmniGroups.TEMPLATES).map(([id, info]) =>
         `<button type="button" class="item" data-wiz-template="${id}">${esc(info.label)}</button>`).join('');
       body = `<div class="modal-card wide wizard-choices"><button type="button" class="confirm" id="wizOwn">Start a blank group</button>${templates}` +
@@ -650,7 +650,7 @@ function openCreateWizard() {
         `<div class="wizard-row"><button type="button" class="close" id="wizBack">Back</button><button type="button" class="close" id="wizSkip">Skip</button></div>${err}`;
     } else if (state.step === 'join') {
       $('#modalTitle').textContent = 'Join a group';
-      $('#modalCopy').textContent = 'Use an invite code from someone in the group.';
+      $('#modalCopy').textContent = 'A device code joins a group stored here. An online chat code works only while you are signed in.';
       body = `<div class="modal-card wide"><input id="wizCode" class="modal-input" maxlength="8" placeholder="Invite code" autocomplete="off"></div>` +
         `<div class="wizard-row"><button type="button" class="close" id="wizBack">Back</button><button type="button" class="confirm" id="wizDoJoin">Join</button></div>${err}`;
     } else {
@@ -784,7 +784,7 @@ $('#groupMenu').onclick = e => {
   if (act === 'copy-invite') {
     const code = data.servers[name] && data.servers[name].inviteCode;
     if (!code) return;
-    const done = () => toast('Invite code ' + code);
+    const done = () => toast('Device code ' + code + '. It only works on this device.');
     if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(code).then(done, done);
     else done();
   } else if (act === 'leave') askLeaveGroup(name);
