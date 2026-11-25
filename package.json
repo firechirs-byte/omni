@@ -1,0 +1,101 @@
+{
+  "name": "omni",
+  "productName": "Omni",
+  "version": "4.3.9",
+  "private": true,
+  "description": "Omni desktop shell. The website in this folder stays the GitHub Pages app.",
+  "main": "desktop/main.js",
+  "author": "Omni",
+  "scripts": {
+    "start": "electron .",
+    "test": "node --test desktop/policy.test.js desktop/cues.test.js desktop/auth-gate.test.js desktop/updates.test.js desktop/connections.test.js desktop/update-state.test.js desktop/nav-path.test.js desktop/shell.test.js desktop/groups.test.js desktop/download-offer.test.js desktop/mac-config.test.js",
+    "smoke": "electron . --omni-self-test",
+    "pack:win": "electron-builder --win nsis portable --x64",
+    "pack:win:zip": "electron-builder --win zip --x64",
+    "pack:mac": "electron-builder --mac zip --arm64"
+  },
+  "devDependencies": {
+    "electron": "45.4.1",
+    "electron-builder": "26.18.0"
+  },
+  "build": {
+    "appId": "io.github.firechirs-byte.omni",
+    "productName": "Omni",
+    "asar": true,
+    "npmRebuild": false,
+    "compression": "normal",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "package.json",
+      "index.html",
+      "styles.css",
+      "manifest.webmanifest",
+      "icon.svg",
+      "*.js",
+      "!sw.js",
+      "fonts/**",
+      "icons/**",
+      "gifs/**",
+      "desktop/main.js",
+      "desktop/policy.js",
+      "desktop/picker-preload.js",
+      "desktop/updates.js",
+      "desktop/update-config.json"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "executableName": "Omni",
+      "icon": "icons/icon-512.png",
+      "signAndEditExecutable": true,
+      "verifyUpdateCodeSignature": false
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "allowElevation": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Omni",
+      "artifactName": "Omni-${version}-setup.exe",
+      "uninstallDisplayName": "Omni"
+    },
+    "portable": {
+      "artifactName": "Omni-${version}-portable.exe"
+    },
+    "mac": {
+      "identity": null,
+      "category": "public.app-category.social-networking",
+      "icon": "icons/icon-512.png",
+      "artifactName": "Omni-${version}-mac-${arch}.${ext}",
+      "target": [
+        {
+          "target": "zip",
+          "arch": [
+            "arm64"
+          ]
+        }
+      ],
+      "extendInfo": {
+        "NSCameraUsageDescription": "Omni uses the camera only after you turn the camera on during a call.",
+        "NSMicrophoneUsageDescription": "Omni uses the microphone only after you join a call.",
+        "NSScreenCaptureUsageDescription": "Omni uses screen capture only after you press Share and pick a screen in Omni's own picker."
+      }
+    }
+  }
+}

@@ -59,6 +59,8 @@ Open the online (https) version, or the localhost one, then:
 
 It gets its own icon and window and opens even when you're offline. That's the service worker (`sw.js`) doing its job.
 
+The website install above is unchanged, including <https://firechirs-byte.github.io/omni/>. A separate Windows desktop build (its own window, not the browser install button) is described in section 13.
+
 A zipped copy of the whole site is in `omni.zip` if you want to send it to someone or back it up.
 
 ---
@@ -246,3 +248,46 @@ The name is in **one place**: `const APP_NAME = 'Omni';` at the top of `config.j
 2. **Block and report** in online chats (a `reports` collection whose rules let people write reports but only admins read them).
 3. **Real calls** with WebRTC (start with two people). Firestore can carry the signalling messages.
 4. **Online reactions** (a `reactions` field or sub-collection, with rules like the ones for `messages`).
+
+## 13. Windows desktop app (v4.3)
+
+Omni v4.3 adds an optional Windows program in `desktop/`. It opens the same HTML, CSS and JavaScript in its own window. The GitHub Pages site is still the website: nothing here changes Firebase project `omni-chat-kb26`, the Firestore region (`asia-southeast1`), email/password sign-in, or the rules. Do not deploy this branch just to try the desktop app. The website updates when `main` is published, the same way as before.
+
+**What stays the same**
+
+- Chat, the four modes, local saving, and online accounts. Online chat still needs the internet.
+- Meetings are still only on this computer: microphone, camera and screen share are real, but other people do not join the call. Copying a meeting link copies the public website link. That link still does not start a real multi-person call.
+- The mini browser still shows pages inside Omni when the site allows it. A link that would leave the window opens in the normal browser instead.
+- Branding stays **Omni**. The Kinly rename is still on hold.
+
+**What is different on Windows**
+
+- Install the `.exe` (or run the portable `.exe`). The in-app **Install** button is hidden there, because this already is the app. "Check for updates" does not download a new version; there is no updater. Install a newer build when you have one.
+- The desktop copy does not use the service worker. Offline website files are the installed program. Signing in and online chat still need the internet.
+- Local chats, themes and the whiteboard are stored for the Windows user (`%APPDATA%\\Omni`), not in Chrome or Edge. They are not copied from the browser. The same Firebase account can sign in, and online messages then sync. Installer and portable exe share that same Windows profile.
+- The build is not code-signed. Windows SmartScreen can warn before the first launch. Signing would need a paid certificate, which this project does not add.
+
+**Security choices**
+
+- The window loads only Omni's own files, from `omni://app`.
+- The page cannot use Node (`nodeIntegration` off, context isolation on, renderer sandbox on).
+- Camera and microphone are granted only when Omni's own window asks (the mini browser cannot use them). Screen share opens a small Omni picker and captures a screen or window only after that choice. This Electron version's built-in system picker is macOS-only, so Windows uses Omni's picker.
+- Pop-ups and top-level navigations to other sites go to the system browser, and only for normal `http` and `https` addresses.
+
+Build steps, the exact commands, and the limits of what was run off a Windows PC are in `desktop/BUILD.md`.
+
+**v4.3.1:** Leave on a lounge (and the meeting Leave button) hangs up. The microphone, camera and screen share stop, the lounge no longer says "You are here", and you can join again. If the microphone is blocked, Join does not leave you in the lounge. Sounds are shorter and quieter. The volume slider and the message, call and update switches are still there. Online text chats are not left when you leave a call. There is still no multi-person call.
+
+**v4.3.8:** Gaming, School, Work, and Casual share one dark shell. Chat fills the center, Join Call stays in a short bar until you join, and People and Board & files open from labeled buttons. No 4.3.8 app was packed.
+
+**v4.3.7:** The lobby says this copy does not update itself, and names Lobby, Connections, and Back to Lobby. It does not download or install an update. The test zips are `Omni-4.3.7-win.zip` and `Omni-4.3.7-mac-arm64.zip`. The Mac zip is unsigned.
+
+**v4.3.6:** Create account on the desktop login screen opens the signup form on top of that screen. The Apple Silicon test zip is `Omni-4.3.6-mac-arm64.zip`. It was packed on Linux and is not a signed Mac app.
+
+**v4.3.5:** The lobby uses Omni’s own green cards on a dark neutral layout. `download.html` is a separate page and is not the app’s home page. Its download button stays unpublished until `download-config.json` has a real https file, version, and checksum.
+
+**v4.3.4, Windows app only:** After sign-in, Omni opens on a Lobby. Connections stores a Minecraft or Roblox name and an official https link for that signed-in person on this device. Those names are not checked with Minecraft or Roblox. The update button says updates are not set up, because no update feed is turned on.
+
+**v4.3.3:** Opening a voice lounge shows Join Call. The participant grid and the mute, camera, share and Leave controls appear after the microphone connects, and Leave puts that grid away and shows Join Call again. The chat stays on screen.
+
+**v4.3.2, Windows app only:** The program name is **Omni**. The shortcut and window title do not include a version number. The version stays inside the app (`APP_VERSION`) so a later update can tell copies apart. Keep one folder and one shortcut pointed at `Omni.exe`. Every build uses the same Windows profile, `%APPDATA%\Omni`. Opening Omni again focuses the window that is already open. On the desktop app you sign in once with email and password; there is no guest entry. The password is not saved in Omni's own storage. Firebase keeps the sign-in until you press Sign out, or the account is expired or revoked. The website still opens with the first-run welcome and optional sign-in. Omni does not download updates by itself: no update server is switched on.

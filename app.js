@@ -23,7 +23,10 @@
 
 /* Omni's version number. When you release a change, bump this AND the
    CACHE name in sw.js, so everyone gets the "Update available" banner. */
-const APP_VERSION = '4.2.0';
+const APP_VERSION = '4.3.9';
+/* Set by the Windows shell (desktop/main.js). The website never sends this. */
+const DESKTOP = /\bOmniDesktop\//.test(navigator.userAgent);
+const PUBLIC_WEB_URL = 'https://firechirs-byte.github.io/omni/';
 
 /* The app's name lives in ONE place: APP_NAME in config.js. The page is written
    with "Omni"; named() swaps it for APP_NAME in the page, pop-ups and toasts. */
@@ -67,10 +70,10 @@ const MODES = {
     emphasize: ['micBtn', 'callBtn'],                 // voice-first
     panelOrder: ['people', 'extra', 'breakouts', 'chat'],
     theme: {
-      accent: '#c6f432', accent2: '#ff5c7a', bg: '#0c0f11', panel: '#14191c', text: '#e8eee9',
-      font: 'inter', headFont: 'space', fontSize: 14, letterSpacing: 0, lineHeight: 145, radius: 6, density: 'comfortable',
-      msgWidth: 900, sideWidth: 240, avatarShape: 'hex', iconStyle: 'line', grain: 25, motion: 'on', bgDim: 45, bgBlur: 0,
-      layout: 'meeting', sidebar: 'left', chatStyle: 'list',
+      accent: '#c6f432', accent2: '#ff8a9a', bg: '#121417', panel: '#1c1f24', text: '#f2f3f5',
+      font: 'inter', headFont: 'space', fontSize: 15, letterSpacing: 0, lineHeight: 150, radius: 10, density: 'comfortable',
+      msgWidth: 900, sideWidth: 248, avatarShape: 'circle', iconStyle: 'line', grain: 8, motion: 'on', bgDim: 45, bgBlur: 0,
+      layout: 'chat', sidebar: 'left', chatStyle: 'list',
       panels: { meeting: true, people: true, breakouts: true, chat: true, extra: true, whiteboard: true, files: true }
     }
   },
@@ -97,10 +100,10 @@ const MODES = {
     emphasize: ['raiseBtn'],
     panelOrder: ['extra', 'breakouts', 'people', 'chat'],
     theme: {
-      accent: '#2f5bd3', accent2: '#e4572e', bg: '#f1ece1', panel: '#fffdf7', text: '#22252c',
-      font: 'atkinson', headFont: 'lexend', fontSize: 15, letterSpacing: 0, lineHeight: 155, radius: 12, density: 'comfortable',
-      msgWidth: 820, sideWidth: 250, avatarShape: 'circle', iconStyle: 'sketch', grain: 25, motion: 'on', bgDim: 55, bgBlur: 4,
-      layout: 'meeting', sidebar: 'left', chatStyle: 'list',
+      accent: '#7aa2ff', accent2: '#e7a15a', bg: '#121417', panel: '#1c1f24', text: '#f2f3f5',
+      font: 'atkinson', headFont: 'lexend', fontSize: 16, letterSpacing: 0, lineHeight: 155, radius: 10, density: 'comfortable',
+      msgWidth: 820, sideWidth: 248, avatarShape: 'circle', iconStyle: 'line', grain: 8, motion: 'on', bgDim: 45, bgBlur: 0,
+      layout: 'chat', sidebar: 'left', chatStyle: 'list',
       panels: { meeting: true, people: true, breakouts: true, chat: true, extra: true, whiteboard: true, files: true }
     }
   },
@@ -127,10 +130,10 @@ const MODES = {
     emphasize: ['uploadBtn', 'attachBtn'],           // file sharing
     panelOrder: ['extra', 'people', 'chat', 'breakouts'],
     theme: {
-      accent: '#e85a0c', accent2: '#1f5fbf', bg: '#e3e3de', panel: '#f8f8f5', text: '#1b1e21',
-      font: 'inter', headFont: 'inter', fontSize: 14, letterSpacing: 0, lineHeight: 140, radius: 2, density: 'compact',
-      msgWidth: 1000, sideWidth: 230, avatarShape: 'square', iconStyle: 'bold', grain: 15, motion: 'on', bgDim: 60, bgBlur: 2,
-      layout: 'meeting', sidebar: 'left', chatStyle: 'list',
+      accent: '#ff8a3d', accent2: '#7aa2ff', bg: '#121417', panel: '#1c1f24', text: '#f2f3f5',
+      font: 'inter', headFont: 'inter', fontSize: 15, letterSpacing: 0, lineHeight: 150, radius: 10, density: 'comfortable',
+      msgWidth: 900, sideWidth: 248, avatarShape: 'circle', iconStyle: 'line', grain: 8, motion: 'on', bgDim: 45, bgBlur: 0,
+      layout: 'chat', sidebar: 'left', chatStyle: 'list',
       panels: { meeting: true, people: true, breakouts: false, chat: true, extra: true, whiteboard: true, files: true }
     }
   },
@@ -157,11 +160,11 @@ const MODES = {
     emphasize: [],
     panelOrder: ['people', 'extra', 'breakouts', 'chat'],
     theme: {
-      accent: '#12804a', accent2: '#ff7a59', bg: '#f6eee4', panel: '#fffaf4', text: '#2a2420',
-      font: 'nunito', headFont: 'nunito', fontSize: 15, letterSpacing: 0, lineHeight: 150, radius: 20, density: 'comfortable',
-      msgWidth: 760, sideWidth: 260, avatarShape: 'circle', iconStyle: 'sketch', grain: 25, motion: 'on', bgDim: 35, bgBlur: 6,
+      accent: '#3dbe7a', accent2: '#ff8a3d', bg: '#121417', panel: '#1c1f24', text: '#f2f3f5',
+      font: 'nunito', headFont: 'nunito', fontSize: 16, letterSpacing: 0, lineHeight: 150, radius: 10, density: 'comfortable',
+      msgWidth: 760, sideWidth: 248, avatarShape: 'circle', iconStyle: 'line', grain: 8, motion: 'on', bgDim: 45, bgBlur: 0,
       layout: 'chat', sidebar: 'left', chatStyle: 'bubbles',
-      panels: { meeting: true, people: true, breakouts: false, chat: true, extra: true, whiteboard: false, files: false }
+      panels: { meeting: true, people: true, breakouts: false, chat: true, extra: true, whiteboard: true, files: true }
     }
   }
 };
@@ -248,15 +251,25 @@ function freshData(mode) {
   return { server: m.servers[0], servers, dms: {}, files: [], tasks: [], role: m.roles[0] };
 }
 // Load a mode's data and patch in anything missing
+function currentUserId() {
+  if (typeof Online !== 'undefined' && Online.uid) return Online.uid;
+  if (!settings.localUserId) {
+    settings.localUserId = 'local-' + Math.random().toString(36).slice(2, 10);
+    saveSettings();
+  }
+  return settings.localUserId;
+}
 function loadData(mode) {
-  const d = load(dataKey(mode), null);
-  if (!d || !d.servers || !Object.keys(d.servers).length) return freshData(mode);
-  d.dms ||= {}; d.files ||= []; d.tasks ||= []; d.role ||= MODES[mode].roles[0];
-  if (!d.servers[d.server]) d.server = Object.keys(d.servers)[0];
-  // v3 left "message deleted" notes behind; deleted messages now vanish completely
-  const tidy = arr => Array.isArray(arr) ? arr.filter(m => m && !m.deleted) : [];
-  Object.values(d.servers).forEach(sv => Object.keys(sv.channels).forEach(c => sv.channels[c] = tidy(sv.channels[c])));
-  Object.values(d.dms).forEach(dm => dm.msgs = tidy(dm.msgs));
+  let d = load(dataKey(mode), null);
+  if (!d || !d.servers || !Object.keys(d.servers).length) d = freshData(mode);
+  else {
+    d.dms ||= {}; d.files ||= []; d.tasks ||= []; d.role ||= MODES[mode].roles[0];
+    if (!d.servers[d.server]) d.server = Object.keys(d.servers)[0];
+    const tidy = arr => Array.isArray(arr) ? arr.filter(m => m && !m.deleted) : [];
+    Object.values(d.servers).forEach(sv => Object.keys(sv.channels || {}).forEach(c => sv.channels[c] = tidy(sv.channels[c])));
+    Object.values(d.dms).forEach(dm => dm.msgs = tidy(dm.msgs));
+  }
+  if (typeof OmniGroups !== 'undefined') OmniGroups.normalizeStore(d, currentUserId());
   return d;
 }
 
@@ -267,7 +280,7 @@ const srv = () => data.servers[data.server];   // the current server
 
 // What you are looking at right now: a channel or a direct message
 let view = { type: 'channel', id: Object.keys(srv().channels)[0] };
-let mediaStream = null, screenStream = null, muted = false, cameraOn = false, hand = false, room = null;
+let mediaStream = null, screenStream = null, muted = false, cameraOn = false, hand = false, room = null, callGen = 0, callJoined = false;
 
 /* ---------- 4. Theme ---------- */
 // The mode's default theme with your saved changes laid on top
@@ -317,6 +330,9 @@ function applyTheme() {
   if (!p.whiteboard && !p.files) cls.push('hide-bottom');
   // Hide the whole right column if nothing in it is showing
   if (!p.people && !p.breakouts && !p.extra && !(p.chat && !bigChat)) cls.push('no-right');
+  ['desktop-locked', 'show-lobby', 'show-side', 'people-open', 'board-open'].forEach(name => {
+    if (document.body.classList.contains(name)) cls.push(name);
+  });
   document.body.className = cls.join(' ');
   $('meta[name="theme-color"]').content = t.panel;
   if (typeof showBackground === 'function') showBackground();   // media.js
@@ -354,12 +370,18 @@ function renderLabels() {
 }
 
 function renderModeSwitch() {
-  $('#modeSwitch').innerHTML = Object.entries(MODES).map(([key, m]) =>
-    `<button data-mode="${key}" class="${key === settings.mode ? 'active' : ''}" title="${esc(m.name)} mode" aria-pressed="${key === settings.mode}">${icon(m.icon)}<span class="lbl">${esc(m.name)}</span></button>`).join('');
+  const buttons = Object.entries(MODES).map(([key, m]) =>
+    `<button type="button" data-mode="${key}" class="${key === settings.mode ? 'active' : ''}" title="${esc(m.name)} mode" aria-pressed="${key === settings.mode}">${icon(m.icon)}<span class="lbl">${esc(m.name)}</span></button>`).join('');
+  $('#modeSwitch').innerHTML = buttons;
 }
 
 function renderServers() {
-  $('#serverList').innerHTML = Object.keys(data.servers).map(name =>
+  const names = typeof OmniGroups !== 'undefined' ? OmniGroups.visibleNames(data.servers, currentUserId()) : Object.keys(data.servers);
+  if (names.length && !names.includes(data.server)) {
+    data.server = names[0];
+    view = { type: 'channel', id: Object.keys(data.servers[data.server].channels)[0] };
+  }
+  $('#serverList').innerHTML = names.map(name =>
     `<button class="dot ${name === data.server ? 'active' : ''} ${data.servers[name].online ? 'online-server' : ''}" data-server="${esc(name)}" title="${esc(name)}">` +
     `${data.servers[name].online ? icon('globe') : esc(serverLabel(name))}</button>`).join('');
   $('#workspaceName').textContent = data.server;
@@ -394,6 +416,7 @@ function renderHeader() {
   const name = isDm ? data.dms[view.id]?.name || view.id : view.id;
   $('#channelIcon').innerHTML = icon(isDm ? 'at' : channelInfo(view.id).icon);
   $('#channelName').textContent = name;
+  if ($('#whereMode')) $('#whereMode').textContent = M().name;
   const onlineTopic = typeof Online !== 'undefined' && Online.topicFor();
   $('#topic').textContent = onlineTopic || (isDm ? 'Direct message · saved on this device only (they can\'t see it until Omni is online)' : channelInfo(view.id).topic);
   $('#messageInput').placeholder = 'Message ' + (isDm ? name : (M().dmsFirst ? '' : '#') + name);
@@ -498,9 +521,10 @@ function renderExtra() {
   }).join('') : `<div class="empty">${esc(M().extra.empty)}</div>`;
 }
 
+const CALL_EMPH = new Set(['micBtn', 'callBtn', 'cameraBtn', 'shareBtn', 'raiseBtn', 'leaveBtn', 'reactBtn']);
 function renderEmphasis() {
   $$('.emph').forEach(el => el.classList.remove('emph'));
-  M().emphasize.forEach(id => $('#' + id)?.classList.add('emph'));
+  M().emphasize.forEach(id => { if (!callJoined && CALL_EMPH.has(id)) return; $('#' + id)?.classList.add('emph'); });
   // put the right-hand panels in this mode's order
   M().panelOrder.forEach((key, i) => { const el = $('#' + key + 'Panel'); if (el) el.style.order = i; });
 }
@@ -508,6 +532,7 @@ function renderEmphasis() {
 function renderAll() {
   renderLabels(); renderModeSwitch(); renderServers(); renderChannels(); renderDMs();
   renderHeader(); renderChat(); renderFiles(); renderPeople(); renderRooms(); renderExtra(); renderEmphasis();
+  syncCallView();
 }
 
 /* ---------- 6. Actions ---------- */
@@ -525,11 +550,7 @@ document.addEventListener('click', e => {
     openChannel(Object.keys(srv().channels)[0]); toast('Switched to ' + data.server);
   }
   else if (t.dataset.mode) switchMode(t.dataset.mode);
-  else if (t.dataset.room !== undefined) {
-    const i = Number(t.dataset.room); room = room === i ? null : i; renderRooms();
-    Sounds.play(room === null ? 'leave' : 'join');
-    toast(room === null ? 'Left the room' : 'Joined ' + M().rooms[i][0]);
-  }
+  else if (t.dataset.room !== undefined) enterLounge(Number(t.dataset.room));
   else if (t.dataset.del) { data.tasks = data.tasks.filter(x => String(x.id) !== t.dataset.del); saveData(); renderExtra(); }
   else if (t.dataset.scheme) setScheme(t.dataset.scheme);
 });
@@ -564,23 +585,214 @@ $('#confirmModal').onclick = () => { Promise.resolve(modalDone()).then(r => { if
 $('#modalBackdrop').onclick = e => { if (e.target.id === 'modalBackdrop') closeModal(); };
 document.addEventListener('keydown', e => {
   if (e.key !== 'Escape') return;
+  if (typeof closeGroupMenu === 'function' && closeGroupMenu()) return;
   if (typeof closeMenu === 'function' && (closeMenu() || closePops())) return;   // menus/pop-ups first (extras.js)
   closeModal(); $('#customize').classList.remove('open');
 });
 $('#modalGrid').addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.matches('input.modal-input')) $('#confirmModal').click(); });
 
 $('#meAvatar').onclick = () => pickAvatar();   // media.js: choose + crop a profile picture
-$('#menuBtn').onclick = () => document.body.classList.toggle('show-side');   // phones only
+function markToggle(id, open) {
+  const el = $('#' + id);
+  if (!el) return;
+  el.setAttribute('aria-pressed', open ? 'true' : 'false');
+}
+$('#peopleToggle').onclick = () => {
+  document.body.classList.toggle('people-open');
+  markToggle('peopleToggle', document.body.classList.contains('people-open'));
+};
+$('#boardToggle').onclick = () => {
+  document.body.classList.toggle('board-open');
+  markToggle('boardToggle', document.body.classList.contains('board-open'));
+};
+$('#moreToggle').onclick = () => {
+  const box = $('#moreTools');
+  box.hidden = !box.hidden;
+  $('#moreToggle').setAttribute('aria-expanded', box.hidden ? 'false' : 'true');
+};
+$('#menuBtn').onclick = () => {
+  document.body.classList.toggle('show-side');
+  $('#menuBtn').setAttribute('aria-expanded', document.body.classList.contains('show-side') ? 'true' : 'false');
+};
 $('#homeBtn').onclick = () => { openChannel(Object.keys(srv().channels)[0]); toast('Home'); };
 
-$('#addServerBtn').onclick = () => modal(M().labels.addServer, 'Give it a name. It starts with this mode\'s usual channels.',
-  '<div class="modal-card wide"><input id="newServer" class="modal-input" placeholder="Name" maxlength="28"></div>', () => {
-    const n = $('#newServer').value.trim(); if (!n) return;
-    if (guard(n, 'name') === null) return false;
-    if (data.servers[n]) { toast('That name is already used'); return false; }
-    data.servers[n] = { channels: Object.fromEntries(M().channels.map(c => [c.id, []])) };
-    data.server = n; saveData(); renderServers(); openChannel(Object.keys(srv().channels)[0]);
-  });
+function templateChannelIds(template) {
+  const info = OmniGroups.TEMPLATES[template];
+  const mode = info ? info.mode : settings.mode;
+  return MODES[mode].channels.map(c => c.id);
+}
+function finishCreate(name, message) {
+  data.server = name;
+  saveData();
+  renderServers();
+  openChannel(Object.keys(srv().channels)[0]);
+  closeModal();
+  toast(message || ('Created ' + name));
+}
+function openCreateWizard() {
+  let state = OmniGroups.wizardStart();
+  modal('Create a group', '', '', null, '');
+  const paint = () => {
+    const err = state.error ? `<p class="form-error" id="wizErr">${esc(state.error)}</p>` : '<p class="form-error" id="wizErr"></p>';
+    let body = '';
+    if (state.step === 1) {
+      $('#modalTitle').textContent = 'Create a group';
+      $('#modalCopy').textContent = 'This group stays on this device. Its code is not an online invite.';
+      const templates = Object.entries(OmniGroups.TEMPLATES).map(([id, info]) =>
+        `<button type="button" class="item" data-wiz-template="${id}">${esc(info.label)}</button>`).join('');
+      body = `<div class="modal-card wide wizard-choices"><button type="button" class="confirm" id="wizOwn">Start a blank group</button>${templates}` +
+        `<button type="button" class="close" id="wizJoin">Join a group</button></div>${err}`;
+    } else if (state.step === 2) {
+      $('#modalTitle').textContent = 'Who is it for?';
+      $('#modalCopy').textContent = 'You can skip this. It only labels the group.';
+      body = `<div class="modal-card wide wizard-choices"><button type="button" class="item" id="wizFriends">Friends</button>` +
+        `<button type="button" class="item" id="wizCommunity">Club or community</button></div>` +
+        `<div class="wizard-row"><button type="button" class="close" id="wizBack">Back</button><button type="button" class="close" id="wizSkip">Skip</button></div>${err}`;
+    } else if (state.step === 'join') {
+      $('#modalTitle').textContent = 'Join a group';
+      $('#modalCopy').textContent = 'A device code joins a group stored here. An online chat code works only while you are signed in.';
+      body = `<div class="modal-card wide"><input id="wizCode" class="modal-input" maxlength="8" placeholder="Invite code" autocomplete="off"></div>` +
+        `<div class="wizard-row"><button type="button" class="close" id="wizBack">Back</button><button type="button" class="confirm" id="wizDoJoin">Join</button></div>${err}`;
+    } else {
+      $('#modalTitle').textContent = 'Name the group';
+      $('#modalCopy').textContent = 'The name is required. A picture is optional.';
+      body = `<div class="modal-card wide"><label>Picture <input id="wizIcon" type="file" accept="image/png,image/jpeg,image/webp"></label>` +
+        `<label>Name <input id="wizName" class="modal-input" maxlength="28" value="${esc(state.name)}" autocomplete="off"></label></div>` +
+        `<div class="wizard-row"><button type="button" class="close" id="wizBack">Back</button><button type="button" class="confirm" id="wizCreate">Create</button></div>${err}`;
+    }
+    $('#modalGrid').innerHTML = body;
+    const set = (next) => { state = next; paint(); };
+    const own = $('#wizOwn'); if (own) own.onclick = () => set(OmniGroups.wizardOwn(state));
+    $$('[data-wiz-template]').forEach(btn => btn.onclick = () => set(OmniGroups.wizardTemplate(state, btn.dataset.wizTemplate)));
+    const join = $('#wizJoin'); if (join) join.onclick = () => set(OmniGroups.wizardJoin(state));
+    const back = $('#wizBack'); if (back) back.onclick = () => set(OmniGroups.wizardBack(state));
+    const skip = $('#wizSkip'); if (skip) skip.onclick = () => set(OmniGroups.wizardSkip(state));
+    const friends = $('#wizFriends'); if (friends) friends.onclick = () => set(OmniGroups.wizardKind(state, 'friends'));
+    const community = $('#wizCommunity'); if (community) community.onclick = () => set(OmniGroups.wizardKind(state, 'community'));
+    const icon = $('#wizIcon');
+    if (icon) icon.onchange = () => {
+      const file = icon.files && icon.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => { state = OmniGroups.wizardIcon(state, String(reader.result || '')); paint(); };
+      reader.readAsDataURL(file);
+    };
+    const create = $('#wizCreate');
+    if (create) create.onclick = () => {
+      const name = $('#wizName').value;
+      if (guard(name, 'name') === null) return;
+      const made = OmniGroups.createGroup(data, {
+        name, userId: currentUserId(), channelIds: templateChannelIds(state.template),
+        icon: state.icon, kind: state.kind, template: state.template || 'own'
+      });
+      if (!made.ok) { state = Object.assign({}, state, { name, error: made.message }); paint(); return; }
+      finishCreate(made.name);
+    };
+    const doJoin = $('#wizDoJoin');
+    if (doJoin) doJoin.onclick = async () => {
+      const code = $('#wizCode').value;
+      doJoin.disabled = true; doJoin.textContent = 'Checking…';
+      const local = OmniGroups.joinLocal(data, code, currentUserId());
+      if (local.ok) { finishCreate(local.name, 'Joined ' + local.name); return; }
+      if (typeof Online !== 'undefined' && Online.ready) {
+        try { const chat = await Online.joinChat(code); goOnline(chat); closeModal(); return; }
+        catch (e) { state = Object.assign({}, state, { error: e.message || String(e) }); paint(); return; }
+      }
+      state = Object.assign({}, state, { error: local.message }); paint();
+    };
+  };
+  paint();
+}
+$('#addServerBtn').onclick = () => openCreateWizard();
+
+let groupMenuName = '';
+function closeGroupMenu() {
+  const menu = $('#groupMenu');
+  if (!menu || !menu.classList.contains('show')) return false;
+  menu.classList.remove('show');
+  menu.hidden = true;
+  return true;
+}
+function openGroupMenu(name, x, y) {
+  const group = data.servers[name];
+  if (!group) return;
+  const plan = OmniGroups.menuFor(group, currentUserId());
+  if (plan.role === 'none') { toast('You are not a member of that group.'); return; }
+  groupMenuName = name;
+  const sep = plan.items.some(item => item.id === 'leave') && plan.items.length > 1 ? '<div class="ctx-sep"></div>' : '';
+  const leave = plan.items.filter(item => item.id === 'leave').map(item =>
+    `<button type="button" role="menuitem" class="danger" data-group-act="leave">${esc(item.label)}</button>`).join('');
+  const rest = plan.items.filter(item => item.id !== 'leave').map(item =>
+    `<button type="button" role="menuitem" data-group-act="${item.id}">${esc(item.label)}</button>`).join('');
+  const menu = $('#groupMenu');
+  menu.innerHTML = rest + (rest && leave ? sep : '') + leave + (plan.note ? `<p class="ctx-note">${esc(plan.note)}</p>` : '');
+  menu.hidden = false;
+  menu.classList.add('show');
+  menu.style.left = '0px'; menu.style.top = '0px';
+  const rect = menu.getBoundingClientRect();
+  const spot = OmniGroups.clampMenu(x, y, rect.width, rect.height, innerWidth, innerHeight);
+  menu.style.left = spot.left + 'px';
+  menu.style.top = spot.top + 'px';
+  const first = menu.querySelector('button');
+  if (first) first.focus();
+}
+function askLeaveGroup(name) {
+  const plan = OmniGroups.menuFor(data.servers[name], currentUserId());
+  if (!plan.items.some(item => item.id === 'leave')) {
+    toast(plan.role === 'owner' ? 'Owners stay with the group they started.' : 'You cannot leave that group.');
+    return;
+  }
+  modal('Leave ' + name, 'You leave the group. It stays for the other members, including its channels.',
+    '<p class="form-error" id="leaveErr"></p>', () => {
+      const out = OmniGroups.leaveGroup(data, name, currentUserId());
+      if (!out.ok) { $('#leaveErr').textContent = out.error === 'owner' ? 'Owners stay with the group they started.' : 'You cannot leave that group.'; return false; }
+      const next = OmniGroups.visibleNames(data.servers, currentUserId());
+      if (data.server === name && next[0]) {
+        data.server = next[0];
+        saveData();
+        renderAll();
+      } else saveData();
+      renderServers();
+      toast('You left ' + name);
+    }, 'Leave group');
+}
+document.addEventListener('contextmenu', e => {
+  const el = e.target.closest('[data-server]');
+  if (!el) return;
+  e.preventDefault();
+  e.stopPropagation();
+  openGroupMenu(el.dataset.server, e.clientX || 24, e.clientY || 24);
+});
+document.addEventListener('keydown', e => {
+  const el = e.target.closest && e.target.closest('[data-server]');
+  if (!el) return;
+  if (e.key !== 'ContextMenu' && !(e.shiftKey && e.key === 'F10')) return;
+  e.preventDefault();
+  const rect = el.getBoundingClientRect();
+  openGroupMenu(el.dataset.server, rect.left, rect.bottom);
+});
+$('#groupMenuBtn').onclick = () => {
+  const rect = $('#groupMenuBtn').getBoundingClientRect();
+  openGroupMenu(data.server, rect.left, rect.bottom + 4);
+};
+$('#groupMenu').onclick = e => {
+  const btn = e.target.closest('[data-group-act]');
+  if (!btn) return;
+  const name = groupMenuName;
+  const act = btn.dataset.groupAct;
+  closeGroupMenu();
+  if (act === 'copy-invite') {
+    const code = data.servers[name] && data.servers[name].inviteCode;
+    if (!code) return;
+    const done = () => toast('Device code ' + code + '. It only works on this device.');
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(code).then(done, done);
+    else done();
+  } else if (act === 'leave') askLeaveGroup(name);
+};
+document.addEventListener('pointerdown', e => {
+  const menu = $('#groupMenu');
+  if (menu && !menu.contains(e.target) && e.target.id !== 'groupMenuBtn') closeGroupMenu();
+});
 
 $('#addChannelBtn').onclick = () => modal(M().labels.addChannel, 'Create a channel in ' + data.server + '.',
   '<div class="modal-card wide"><input id="newChannel" class="modal-input" placeholder="channel-name" maxlength="32"></div>', () => {
@@ -632,8 +844,8 @@ $('#settingsBtn').onclick = () => {
     `<div class="modal-card"><b>Status line</b><input id="setStatus" class="modal-input" maxlength="40" placeholder="e.g. Building Omni" value="${esc(settings.status || '')}"></div>` +
     `<div class="modal-card"><b>Your role in ${esc(M().name)} mode</b><select id="setRole" class="modal-input">${roles}</select></div>` +
     `<div class="modal-card"><b>Appearance</b><span>Colours, fonts, background picture, layout.</span><div class="row"><button class="close" id="setCustom">${icon('palette')} Customize</button></div></div>` +
-    `<div class="modal-card"><b>Data</b><span>Everything is stored in this browser.</span><div class="row"><button class="close" id="setClear">Clear ${esc(M().name)} data</button></div></div>` +
-    `<div class="modal-card wide"><b>Sound &amp; updates</b><span>Omni <b id="setVersion">v${APP_VERSION}</b> · ${swReg ? 'saved for offline use' : 'offline mode needs https:// or localhost'}</span>` +
+    `<div class="modal-card"><b>Data</b><span>${DESKTOP ? 'Local chats, themes and the whiteboard stay in this Windows app, separate from the website browser.' : 'Everything is stored in this browser.'}</span><div class="row"><button class="close" id="setClear">Clear ${esc(M().name)} data</button></div></div>` +
+    `<div class="modal-card wide"><b>Sound &amp; updates</b><span>Omni <b id="setVersion">v${APP_VERSION}</b> · ${DESKTOP ? 'desktop app · internet required for online chat' : (swReg ? 'saved for offline use' : 'offline mode needs https:// or localhost')}</span>` +
     `<div class="row"><span class="row-left"><label class="switch"><input type="checkbox" id="setSound" ${Sounds.prefs.on ? 'checked' : ''}><span></span></label> Sound on</span>` +
     `<span class="row-left"><button class="close" id="setSoundMore">${icon('volume')} Sound settings</button><button class="close" id="setUpdate">${icon('reload')} Check for updates</button></span></div></div>` +
     (typeof onlineCardHTML === 'function' ? onlineCardHTML() : '') +   // firebase.js
@@ -687,27 +899,114 @@ $('#fileInput').onchange = e => {
 };
 
 /* ---------- 7. Media (mic, camera, screen share) ---------- */
-async function startMedia(video = false) {
+function inCall() {
+  return !!(mediaStream || screenStream || cameraOn || room !== null || hand || $('#livePill').classList.contains('red'));
+}
+function stopTracks(stream) {
+  try { stream?.getTracks().forEach(track => track.stop()); } catch { /* already ended */ }
+}
+function resetCallChrome() {
+  for (const id of ['localVideo', 'screenVideo']) {
+    const el = $('#' + id); if (!el) continue;
+    try { el.srcObject = null; } catch { /* ignore */ }
+    el.style.display = 'none';
+  }
+  $('#localFace').style.display = 'grid';
+  $('#screenCard').style.display = 'block';
+  $('#screenLabel').textContent = 'Screen share is off';
+  $('#shareBtn').classList.remove('active'); $('#shareBtn .label').textContent = 'Share';
+  $('#cameraBtn').classList.remove('active'); $('#cameraBtn .label').textContent = 'Camera';
+  $('#micBtn').classList.remove('active'); $('#micBtn .label').textContent = 'Mute';
+  $('#localMic').innerHTML = icon('mic');
+  $('#raiseBtn').classList.remove('active'); $('#raiseBtn .label').textContent = 'Raise hand';
+  $('#livePill').textContent = 'READY'; $('#livePill').classList.remove('red');
+  if ($('#meetingCount')) $('#meetingCount').textContent = 'Not in a call';
+}
+/* Drop every local capture. Remote text chats are left alone: there is no call subscription. */
+function stopCapture() {
+  const media = mediaStream, screen = screenStream;
+  mediaStream = null; screenStream = null; cameraOn = false; muted = false; hand = false;
+  stopTracks(screen); stopTracks(media);
+  resetCallChrome();
+}
+/* Leave the lounge and the call. Safe to call again. silent: no sound or toast (mode switch). */
+function syncCallView() {
+  const panel = $('#meetingPanel');
+  if (panel) panel.classList.toggle('in-call', !!callJoined);
+  if ($('#callIdleTitle')) $('#callIdleTitle').textContent = M().labels.meeting || 'Call';
+}
+function leaveCall(opts = {}) {
+  const was = callJoined || !!(mediaStream || screenStream || cameraOn || hand || $('#livePill').classList.contains('red'));
+  callGen++;
+  callJoined = false;
+  const wasRoom = room;
+  stopCapture();
+  if (wasRoom !== null) { room = null; renderRooms(); }
+  syncCallView();
+  renderEmphasis();
+  if (!was) return false;
+  if (!opts.silent) { Sounds.play('leave'); toast('You left the call'); }
+  return true;
+}
+async function startMedia(video = false, opts = {}) {
+  const gen = opts.gen;
+  let stream = null;
   try {
-    mediaStream?.getTracks().forEach(t => t.stop());
-    mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true, video });
+    stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: !!video });
+    if (gen !== undefined && gen !== callGen) { stopTracks(stream); return false; }
+    stopTracks(mediaStream);
+    mediaStream = stream;
     if (video) {
       $('#localVideo').srcObject = mediaStream; $('#localVideo').style.display = 'block'; $('#localFace').style.display = 'none'; cameraOn = true;
     }
     mediaStream.getAudioTracks().forEach(t => t.enabled = !muted);
-    Sounds.play('join');
-    $('#livePill').textContent = 'LIVE'; $('#livePill').classList.add('red'); toast('Meeting media connected');
-  } catch { mediaStream = null; toast('Browser blocked microphone/camera permission'); }
+    $('#livePill').textContent = 'LIVE'; $('#livePill').classList.add('red');
+    if ($('#meetingCount')) $('#meetingCount').textContent = '1 participant';
+    if (!opts.quiet) { Sounds.play('join'); toast('Meeting media connected'); }
+    return true;
+  } catch {
+    stopTracks(stream);
+    if (!opts.quiet) toast('Browser blocked microphone/camera permission');
+    return false;
+  }
+}
+/* Squad rooms only pick a room. The microphone starts from Join Call, not from opening a channel or a room. */
+function enterLounge(i) {
+  const rooms = M().rooms || [];
+  if (!Number.isInteger(i) || i < 0 || i >= rooms.length) return;
+  room = room === i ? null : i;
+  renderRooms();
+}
+async function joinCall() {
+  if (callJoined && mediaStream) return;
+  const gen = ++callGen;
+  const ok = await startMedia(false, { quiet: true, gen });
+  if (gen !== callGen) return;
+  if (!ok || !mediaStream) {
+    callJoined = false;
+    stopCapture();
+    syncCallView();
+    toast('Could not join the call. The microphone was not allowed.');
+    return;
+  }
+  callJoined = true;
+  syncCallView();
+  renderEmphasis();
+  Sounds.play('join');
+  toast('Joined the call');
 }
 async function toggleMic() {
-  if (!mediaStream) { await startMedia(); if (!mediaStream) return; }
+  if (!callJoined) return;
+  if (!mediaStream) return;
   muted = !muted; mediaStream.getAudioTracks().forEach(t => t.enabled = !muted);
   $('#micBtn').classList.toggle('active', muted); $('#micBtn .label').textContent = muted ? 'Unmute' : 'Mute';
   $('#localMic').innerHTML = icon(muted ? 'micOff' : 'mic');
 }
 $('#micBtn').onclick = toggleMic;
-$('#callBtn').onclick = async () => { if (mediaStream) return toast('You are already connected'); await startMedia(false); };
+$('#joinCallBtn').onclick = () => joinCall();
+$('#callBtn').onclick = () => { if (callJoined) return toast('You are already in the call'); joinCall(); };
 $('#cameraBtn').onclick = async () => {
+  if (!callJoined) return;
   if (cameraOn) {
     mediaStream?.getVideoTracks().forEach(t => t.stop()); cameraOn = false;
     $('#localVideo').style.display = 'none'; $('#localFace').style.display = 'grid';
@@ -718,6 +1017,7 @@ $('#cameraBtn').onclick = async () => {
 };
 $('#videoBtn').onclick = () => $('#cameraBtn').click();
 $('#shareBtn').onclick = async () => {
+  if (!callJoined) return;
   if (screenStream) {
     screenStream.getTracks().forEach(t => t.stop()); screenStream = null;
     $('#screenVideo').style.display = 'none'; $('#screenCard').style.display = 'block'; $('#screenLabel').textContent = 'Screen share is off';
@@ -736,17 +1036,9 @@ $('#raiseBtn').onclick = () => {
   $('#raiseBtn .label').textContent = hand ? 'Lower hand' : 'Raise hand'; toast(hand ? 'Hand raised ✋' : 'Hand lowered');
 };
 $('#reactBtn').onclick = () => { Sounds.play('reaction'); toast('Reaction sent 👍'); };
-$('#leaveBtn').onclick = () => {
-  mediaStream?.getTracks().forEach(t => t.stop()); if (screenStream) $('#shareBtn').click();
-  mediaStream = null; cameraOn = false; muted = false;
-  $('#localVideo').style.display = 'none'; $('#localFace').style.display = 'grid';
-  $('#cameraBtn').classList.remove('active'); $('#cameraBtn .label').textContent = 'Camera';
-  $('#micBtn').classList.remove('active'); $('#micBtn .label').textContent = 'Mute'; $('#localMic').innerHTML = icon('mic');
-  Sounds.play('leave');
-  $('#livePill').textContent = 'READY'; $('#livePill').classList.remove('red'); toast('You left the meeting');
-};
+$('#leaveBtn').onclick = () => leaveCall();
 $('#copyBtn').onclick = async () => {
-  const link = location.href.split('#')[0] + '#meeting=' + slug(M().labels.meeting + '-' + data.server);
+  const link = (DESKTOP ? PUBLIC_WEB_URL : location.href.split('#')[0]) + '#meeting=' + slug(M().labels.meeting + '-' + data.server);
   try { await navigator.clipboard.writeText(link); toast('Meeting link copied'); }
   catch { modal('Meeting link', 'Copy this link. (Other people can only join once Omni has a server.)', `<div class="modal-card wide"><span>${esc(link)}</span></div>`); }
 };
@@ -932,6 +1224,7 @@ $('#welcomeStart').onclick = () => {
 
 function switchMode(mode, quiet) {
   if (!MODES[mode]) return;
+  leaveCall({ silent: true });
   settings.mode = mode; saveSettings();
   data = loadData(mode); room = null;
   if (typeof Online !== 'undefined') Online.attach();   // online chats show in every mode
@@ -958,7 +1251,7 @@ let deferredInstall = null;
 const standalone = () => matchMedia('(display-mode: standalone)').matches || navigator.standalone;
 window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); deferredInstall = e; });
 window.addEventListener('appinstalled', () => { Sounds.play('installed'); toast('Omni installed', 3000); $('#installBtn').style.display = 'none'; });
-if (standalone()) $('#installBtn').style.display = 'none';
+if (standalone() || DESKTOP) $('#installBtn').style.display = 'none';
 $('#installBtn').onclick = async () => {
   if (deferredInstall) {
     deferredInstall.prompt();
@@ -997,6 +1290,7 @@ $('#updateNow').onclick = () => {
 };
 
 async function checkForUpdate() {
+  if (DESKTOP) return toast('Omni does not download updates by itself yet. Replace the files in this same Omni folder when you have a newer copy. Your sign-in stays on this Windows profile.', 5000);
   if (!swReg) return toast('Updates need Omni to be opened from https:// or localhost', 3500);
   if (waitingWorker) return showUpdateBanner(waitingWorker);
   toast('Checking for updates…');
@@ -1035,5 +1329,6 @@ if (updatedFrom) {
 
 /* ---------- Start! ---------- */
 applyAppName();   // "Omni" → APP_NAME from config.js
-applyTheme(); renderAll();
-if (!settings.welcomed) showWelcome();
+applyTheme(); renderAll(); resetCallChrome();
+if (DESKTOP) { const w = $('#welcome'); if (w) w.classList.remove('show'); }
+else if (!settings.welcomed) showWelcome();

@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Download Omni for Windows</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 16px/1.5 Inter, system-ui, sans-serif; background: #16181d; color: #f2f3f5; }
+  main { max-width: 880px; margin: 0 auto; padding: 40px 20px 64px; }
+  .kicker { color: #1f8a4c; font-weight: 700; letter-spacing: .04em; font-size: .8rem; margin: 0; }
+  h1 { font-size: 40px; margin: 4px 0 8px; letter-spacing: -.03em; }
+  .lead { color: #b5bac1; max-width: 46rem; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; margin-top: 22px; }
+  article { background: #232428; border: 1px solid #2e3036; border-radius: 12px; padding: 16px; }
+  article.jump { background: linear-gradient(180deg, #243328, #232428 72%); }
+  h2 { margin: 0 0 6px; font-size: 1.15rem; }
+  p, li { color: #b5bac1; }
+  button, a.cta { display: inline-flex; margin-top: 8px; background: #3a3d44; color: #f2f3f5; border: 0; border-radius: 8px; padding: 10px 14px; font-weight: 700; text-decoration: none; }
+  a.cta { background: #c6f432; color: #14210a; }
+  button:disabled { opacity: .85; }
+  code { color: #f2f3f5; }
+  :focus-visible { outline: 2px solid #c6f432; outline-offset: 2px; }
+  @media (prefers-reduced-motion: no-preference) {
+    article { transition: transform .18s ease, border-color .18s ease; }
+    article:hover { transform: translateY(-2px); }
+  }
+</style>
+</head>
+<body>
+<main>
+  <p class="kicker">OMNI</p>
+  <h1>Windows app</h1>
+  <p class="lead">Omni is a chat and meeting app. The Windows copy is one program named Omni. This page only offers a file when a real https address, version, and checksum are configured. Nothing is published here yet.</p>
+  <div class="grid">
+    <article class="jump">
+      <h2>Download</h2>
+      <p id="downloadStatus">Checking the download settings…</p>
+      <p id="downloadAction"></p>
+    </article>
+    <article>
+      <h2>What you get</h2>
+      <p>The file, when it exists, is an unpacked zip. Extract it and run <code>Omni.exe</code>. That is not a setup wizard. There is no installer and no automatic update in the current build.</p>
+    </article>
+    <article>
+      <h2>After you extract it</h2>
+      <ul>
+        <li>Keep one folder and point the shortcut at <code>Omni.exe</code>.</li>
+        <li>Sign-in is remembered in <code>%APPDATA%\Omni</code>.</li>
+        <li>Online chat needs the internet. There is no guest entry in the desktop app.</li>
+      </ul>
+    </article>
+  </div>
+</main>
+<script type="application/json" id="downloadFallback">{"enabled":false,"url":"","version":"","sha256":""}</script>
+<script src="download-offer.js"></script>
+<script>
+(async function () {
+  let config;
+  try {
+    const res = await fetch('download-config.json', { cache: 'no-store' });
+    config = res.ok ? await res.json() : null;
+  } catch { config = null; }
+  if (!config) {
+    try { config = JSON.parse(document.getElementById('downloadFallback').textContent); }
+    catch { config = {}; }
+  }
+  const offer = window.OmniDownload.offer(config);
+  document.getElementById('downloadStatus').textContent = offer.available
+    ? 'Omni ' + offer.version + ' zip. sha256 ' + offer.sha256
+    : 'Download is not published yet. No public file address is configured.';
+  const slot = document.getElementById('downloadAction');
+  if (offer.available) {
+    const link = document.createElement('a');
+    link.className = 'cta';
+    link.href = offer.url;
+    link.textContent = offer.label;
+    slot.appendChild(link);
+  } else {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.disabled = true;
+    button.textContent = offer.label;
+    slot.appendChild(button);
+  }
+})();
+</script>
+</body>
+</html>

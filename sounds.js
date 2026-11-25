@@ -24,10 +24,10 @@ const Sounds = (() => {
      overtone:  add a quiet extra tone this many times higher (makes a bell shimmer)
      detune:    add a second slightly-out-of-tune copy (makes synths sound fatter) */
   const STYLES = {
-    synth:  { name: '🎮 Punchy synth', wave: 'square',   base: 440, attack: 0.004, tail: 0.06, glide: 1.5,  glideTime: 0.04, level: 0.12, detune: 14 },
-    chime:  { name: '🎓 Soft chime',   wave: 'sine',     base: 660, attack: 0.01,  tail: 0.6,  glide: 1,    level: 0.32, overtone: 3 },
-    beep:   { name: '🦺 Clean beep',   wave: 'triangle', base: 880, attack: 0.004, tail: 0.03, glide: 1,    level: 0.3 },
-    bubble: { name: '💬 Bubbly pop',   wave: 'sine',     base: 520, attack: 0.004, tail: 0.08, glide: 0.55, glideTime: 0.06, level: 0.4 }
+    synth:  { name: '🎮 Punchy synth', wave: 'triangle', base: 392, attack: 0.008, tail: 0.05, glide: 1.08, glideTime: 0.03, level: 0.07, detune: 4 },
+    chime:  { name: '🎓 Soft chime',   wave: 'sine',     base: 523, attack: 0.012, tail: 0.16, glide: 1,    level: 0.08, overtone: 2 },
+    beep:   { name: '🦺 Clean beep',   wave: 'sine',     base: 494, attack: 0.006, tail: 0.04, glide: 1,    level: 0.08 },
+    bubble: { name: '💬 Bubbly pop',   wave: 'sine',     base: 440, attack: 0.008, tail: 0.06, glide: 0.85, glideTime: 0.04, level: 0.08 }
   };
   // Which instrument each mode uses when the style is set to "Match the mode"
   const MODE_STYLE = { gaming: 'synth', school: 'chime', work: 'beep', casual: 'bubble' };
@@ -36,18 +36,18 @@ const Sounds = (() => {
      Each note is [semitones above the base pitch, start time (s), length (s)].
      12 semitones = one octave higher. 0, 4, 7 = a happy major chord. */
   const TUNES = {
-    send:            [[7, 0, .05]],                                   // quick "tick"
-    receive:         [[0, 0, .08], [7, .09, .1]],                     // two notes up
-    dm:              [[4, 0, .07], [9, .08, .07], [16, .16, .12]],    // three-note ping
-    mention:         [[12, 0, .07], [12, .1, .07], [19, .2, .14]],    // "hey-hey-YOU"
-    toast:           [[5, 0, .04]],                                   // tiny soft blip
-    join:            [[0, 0, .08], [4, .09, .08], [7, .18, .14]],     // going up = hello
-    leave:           [[7, 0, .08], [4, .09, .08], [0, .18, .16]],     // going down = bye
-    hand:            [[9, 0, .07], [14, .08, .16]],                   // "ding-ding!"
-    reaction:        [[16, 0, .04], [21, .05, .06]],                  // sparkle
-    updateAvailable: [[0, 0, .1], [5, .12, .1], [9, .24, .18]],       // "something new"
-    updated:         [[0, 0, .08], [4, .08, .08], [7, .16, .08], [12, .24, .22]], // fanfare
-    installed:       [[0, 0, .3], [7, 0, .3], [12, 0, .3], [16, .12, .32]]        // happy chord
+    send:            [[7, 0, .03]],                          // one short tick
+    receive:         [[0, 0, .04], [7, .05, .05]],           // two quiet notes
+    dm:              [[4, 0, .04], [9, .06, .06]],           // short ping
+    mention:         [[12, 0, .04], [16, .06, .07]],         // still stands out, but brief
+    toast:           [[5, 0, .025]],                        // tiny blip
+    join:            [[0, 0, .045], [7, .06, .07]],          // hello
+    leave:           [[5, 0, .04], [0, .06, .07]],           // bye
+    hand:            [[9, 0, .05]],                          // one ding
+    reaction:        [[12, 0, .035]],                       // one sparkle
+    updateAvailable: [[0, 0, .05], [7, .07, .08]],          // something new
+    updated:         [[0, 0, .04], [4, .05, .04], [7, .1, .08]],
+    installed:       [[0, 0, .06], [7, .07, .09]]
   };
   // Which settings switch controls each sound
   const CATEGORY = {
@@ -55,16 +55,16 @@ const Sounds = (() => {
     join: 'calls', leave: 'calls', hand: 'calls', reaction: 'calls',
     updateAvailable: 'updates', updated: 'updates', installed: 'updates'
   };
-  const SOFTER = { toast: 0.45, send: 0.8 };   // some sounds should be quieter
+  const SOFTER = { toast: 0.35, send: 0.55, receive: 0.7, dm: 0.75, mention: 0.85, reaction: 0.6 };
 
   /* ---------- Settings (saved in localStorage, shared by all modes) ---------- */
   const KEY = 'omni_v3_sound';
-  const prefs = { on: true, volume: 60, style: 'auto', messages: true, calls: true, updates: true };
+  const prefs = { on: true, volume: 32, style: 'auto', messages: true, calls: true, updates: true };
   try { Object.assign(prefs, JSON.parse(localStorage.getItem(KEY)) || {}); } catch { /* use defaults */ }
   const save = () => { try { localStorage.setItem(KEY, JSON.stringify(prefs)); } catch { /* storage full */ } };
 
   /* ---------- The audio engine ---------- */
-  let ctx = null, out = null, mode = 'gaming', lastPlay = 0, pending = null;
+  let ctx = null, out = null, mode = 'gaming', lastPlay = 0, pending = null, busyUntil = 0, lastName = '';
   const history = [];   // names of the last sounds played (handy for testing)
 
   // Called on your first click / key press: now the browser lets us make sound
@@ -114,10 +114,17 @@ const Sounds = (() => {
       if (CATEGORY[name] === 'updates') pending = { name, at: Date.now() };
       return false;
     }
+    const nowClock = ctx.currentTime;
+    // The same cue twice in a row, or a message blip while another cue is still going, is skipped.
+    if (!force && name === lastName && nowClock < busyUntil) return false;
+    if (!force && CATEGORY[name] === 'messages' && nowClock < busyUntil) return false;
     const vol = (prefs.volume / 100) * (SOFTER[name] || 1);
     if (vol <= 0) return false;
-    const s = STYLES[styleName()], now = ctx.currentTime + 0.01;
+    const s = STYLES[styleName()], now = nowClock + 0.01;
     tune.forEach(([semi, t, len]) => tone(s, s.base * 2 ** (semi / 12), now + t, len, vol));
+    const span = tune.reduce((max, note) => Math.max(max, note[1] + note[2]), 0) + Math.min(s.tail, 0.12);
+    busyUntil = now + span;
+    lastName = name;
     lastPlay = Date.now();
     history.push(name); if (history.length > 30) history.shift();
     return true;
