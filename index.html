@@ -27,7 +27,7 @@
   </aside>
 
   <!-- 2. Sidebar: channels + direct messages + your profile -->
-  <aside class="side" aria-label="Channels and messages">
+  <aside class="side" id="channelSidebar" aria-label="Channels and messages">
     <div class="workspace">
       <div class="ws-text"><div class="ws-name" id="workspaceName">Server</div><div class="tiny" data-label="workspaceTag">community</div></div>
       <button class="icon-btn" id="workspaceBtn" title="Workspace options" aria-label="Workspace options"><i data-icon="chevron"></i></button>
@@ -60,7 +60,7 @@
   <!-- 3. Main area: top bar, stage (meeting / chat), side panels, message box -->
   <main class="main">
     <header class="topbar">
-      <button class="icon-btn" id="menuBtn" title="Channels" aria-label="Show channels"><i data-icon="menu"></i></button>
+      <button class="text-btn" id="menuBtn" type="button" aria-expanded="false" aria-controls="channelSidebar">Channels</button>
       <div class="channel-title"><span class="hash" id="channelIcon"></span><div><div class="where-mode" id="whereMode">Gaming</div><h1 id="channelName">general</h1></div></div>
       <div class="topic" id="topic"></div>
       <!-- The mode picker. app.js fills in the 4 buttons from the MODES list -->
@@ -68,16 +68,19 @@
       <div class="top-actions">
         <button class="text-btn" id="peopleToggle" type="button" aria-pressed="false">People</button>
         <button class="text-btn" id="boardToggle" type="button" aria-pressed="false">Board &amp; files</button>
-        <button class="icon-btn" id="membersBtn" title="People" aria-label="People"><i data-icon="users"></i></button>
-        <button class="icon-btn" id="callBtn" title="Join voice" aria-label="Join voice"><i data-icon="phone"></i></button>
-        <button class="icon-btn" id="videoBtn" title="Camera" aria-label="Camera"><i data-icon="video"></i></button>
-        <button class="icon-btn" id="browserBtn" title="Mini browser" aria-label="Mini browser"><i data-icon="globe"></i></button>
-        <button class="icon-btn" id="askBtn" title="Ask Omni (AI helper)" aria-label="Ask Omni"><i data-icon="sparkle"></i></button>
-        <button class="icon-btn" id="safetyBtn" title="Safety" aria-label="Safety"><i data-icon="shield"></i></button>
-        <button class="icon-btn" id="customizeBtn" title="Customize the look" aria-label="Customize"><i data-icon="palette"></i></button>
         <button class="text-btn" id="lobbyBtn" hidden type="button">Back to Lobby</button>
-        <button class="icon-btn" id="installBtn" title="Install Omni as an app" aria-label="Install"><i data-icon="download"></i></button>
-        <button class="search" id="searchBtn" aria-label="Search"><i data-icon="search"></i><span class="lbl">Search</span></button>
+        <button class="text-btn" id="moreToggle" type="button" aria-expanded="false" aria-controls="moreTools">More</button>
+        <div id="moreTools" class="more-tools" hidden>
+          <button class="icon-btn" id="membersBtn" title="People" aria-label="People"><i data-icon="users"></i></button>
+          <button class="icon-btn" id="callBtn" title="Join voice" aria-label="Join voice"><i data-icon="phone"></i></button>
+          <button class="icon-btn" id="videoBtn" title="Camera" aria-label="Camera"><i data-icon="video"></i></button>
+          <button class="icon-btn" id="browserBtn" title="Mini browser" aria-label="Mini browser"><i data-icon="globe"></i></button>
+          <button class="icon-btn" id="askBtn" title="Ask Omni (AI helper)" aria-label="Ask Omni"><i data-icon="sparkle"></i></button>
+          <button class="icon-btn" id="safetyBtn" title="Safety" aria-label="Safety"><i data-icon="shield"></i></button>
+          <button class="icon-btn" id="customizeBtn" title="Customize the look" aria-label="Customize"><i data-icon="palette"></i></button>
+          <button class="icon-btn" id="installBtn" title="Install Omni as an app" aria-label="Install"><i data-icon="download"></i></button>
+          <button class="search" id="searchBtn" aria-label="Search"><i data-icon="search"></i><span class="lbl">Search</span></button>
+        </div>
       </div>
     </header>
 

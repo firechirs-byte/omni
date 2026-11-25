@@ -591,7 +591,15 @@ $('#boardToggle').onclick = () => {
   document.body.classList.toggle('board-open');
   markToggle('boardToggle', document.body.classList.contains('board-open'));
 };
-$('#menuBtn').onclick = () => document.body.classList.toggle('show-side');   // phones only
+$('#moreToggle').onclick = () => {
+  const box = $('#moreTools');
+  box.hidden = !box.hidden;
+  $('#moreToggle').setAttribute('aria-expanded', box.hidden ? 'false' : 'true');
+};
+$('#menuBtn').onclick = () => {
+  document.body.classList.toggle('show-side');
+  $('#menuBtn').setAttribute('aria-expanded', document.body.classList.contains('show-side') ? 'true' : 'false');
+};
 $('#homeBtn').onclick = () => { openChannel(Object.keys(srv().channels)[0]); toast('Home'); };
 
 $('#addServerBtn').onclick = () => modal(M().labels.addServer, 'Give it a name. It starts with this mode\'s usual channels.',

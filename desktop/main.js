@@ -295,8 +295,8 @@ function createWindow() {
   const win = new BrowserWindow({
     width: 1280,
     height: 800,
-    minWidth: 960,
-    minHeight: 640,
+    minWidth: 720,
+    minHeight: 520,
     title: 'Omni',
     backgroundColor: '#0c0f11',
     autoHideMenuBar: true,
@@ -565,42 +565,101 @@ async function runSelfTest(win) {
   }
   console.log('OMNI_JOINED_DOM ' + JSON.stringify(joined));
   console.log('OMNI_LEFT_DOM ' + JSON.stringify(left));
-  const uiShots = [
-    { name: 'ui-gaming-1280', w: 1280, h: 800, mode: 'gaming' },
-    { name: 'ui-school-1280', w: 1280, h: 800, mode: 'school' },
-    { name: 'ui-work-1280', w: 1280, h: 800, mode: 'work' },
-    { name: 'ui-casual-1280', w: 1280, h: 800, mode: 'casual' },
-    { name: 'ui-gaming-1024', w: 1024, h: 576, mode: 'gaming' },
-    { name: 'ui-gaming-720', w: 720, h: 576, mode: 'gaming' }
-  ];
-  for (const item of uiShots) {
-    win.setContentSize(item.w, item.h);
-    const report = await win.webContents.executeJavaScript(`(() => {
-      document.body.classList.remove('show-lobby');
-      document.querySelector('[data-mode="${item.mode}"]').click();
-      const chat = getComputedStyle(document.getElementById('chatStage'));
-      const grid = getComputedStyle(document.querySelector('.video-grid'));
-      const meeting = document.getElementById('meetingPanel').getBoundingClientRect();
-      const stage = document.getElementById('chatStage').getBoundingClientRect();
-      return {
-        mode: document.getElementById('whereMode').textContent,
-        chat: chat.display,
-        grid: grid.display,
-        chatTaller: stage.height > meeting.height,
-        peopleHidden: getComputedStyle(document.querySelector('.right')).display === 'none',
-        boardHidden: getComputedStyle(document.querySelector('.bottom-stage')).display === 'none',
-        modes: [...document.querySelectorAll('#sideModes button')].map(b => b.textContent.replace(/\\s+/g, ' ').trim())
-      };
-    })()`);
-    if (report.mode !== item.mode[0].toUpperCase() + item.mode.slice(1) || report.chat !== 'flex' || report.grid !== 'none' || !report.chatTaller || !report.peopleHidden || !report.boardHidden) {
-      console.error('ui ' + item.name + ' ' + JSON.stringify(report));
-      app.exit(1);
-      return;
-    }
-    await new Promise(resolve => setTimeout(resolve, 120));
-    await shot('shell-' + item.name);
+  const fit = `(() => {
+    const box = (el) => {
+      if (!el) return null;
+      const r = el.getBoundingClientRect();
+      const style = getComputedStyle(el);
+      return { display: style.display, left: r.left, right: r.right, top: r.top, bottom: r.bottom, w: r.width };
+    };
+    const view = document.getElementById('chatStage').getBoundingClientRect();
+    const meeting = document.getElementById('meetingPanel').getBoundingClientRect();
+    const bar = document.querySelector('.topbar').getBoundingClientRect();
+    const inside = (b) => b && b.display !== 'none' && b.left >= -1 && b.right <= window.innerWidth + 1 && b.top >= -1 && b.bottom <= window.innerHeight + 1;
+    return {
+      innerWidth: window.innerWidth,
+      innerHeight: window.innerHeight,
+      pageScrolls: document.documentElement.scrollHeight > window.innerHeight + 8,
+      headerClipped: document.querySelector('.topbar').scrollWidth > document.querySelector('.topbar').clientWidth + 2,
+      chat: getComputedStyle(document.getElementById('chatStage')).display,
+      grid: getComputedStyle(document.querySelector('.video-grid')).display,
+      chatTaller: view.height > meeting.height,
+      peopleHidden: getComputedStyle(document.querySelector('.right')).display === 'none',
+      boardHidden: getComputedStyle(document.querySelector('.bottom-stage')).display === 'none',
+      side: box(document.getElementById('channelSidebar')),
+      channels: box(document.getElementById('menuBtn')),
+      lobby: box(document.getElementById('lobbyBtn')),
+      people: box(document.getElementById('peopleToggle')),
+      board: box(document.getElementById('boardToggle')),
+      more: box(document.getElementById('moreToggle')),
+      barRight: bar.right
+    };
+  })()`;
+  const paint = async (js) => {
+    const report = await win.webContents.executeJavaScript(js);
+    await new Promise(resolve => setTimeout(resolve, 150));
+    return report;
+  };
+  win.setContentSize(1280, 800);
+  let wide = await paint(`(() => { document.body.classList.remove('show-lobby', 'show-side', 'people-open', 'board-open'); document.querySelector('[data-mode="gaming"]').click(); return ${fit}; })()`);
+  if (wide.chat !== 'flex' || wide.grid !== 'none' || !wide.chatTaller || !wide.peopleHidden || !wide.boardHidden || wide.pageScrolls) {
+    console.error('wide shell ' + JSON.stringify(wide));
+    app.exit(1);
+    return;
   }
-  console.log('OMNI_SHELL_TEST_OK');
+  await shot('shell-ui-gaming-1280');
+  await paint(`document.getElementById('peopleToggle').click()`);
+  const peopleOpen = await win.webContents.executeJavaScript(`getComputedStyle(document.querySelector('.right')).display`);
+  await shot('shell-ui-people-open');
+  await paint(`document.getElementById('peopleToggle').click()`);
+  const peopleClosed = await win.webContents.executeJavaScript(`getComputedStyle(document.querySelector('.right')).display`);
+  await paint(`document.getElementById('boardToggle').click()`);
+  const boardOpen = await win.webContents.executeJavaScript(`getComputedStyle(document.querySelector('.bottom-stage')).display`);
+  await shot('shell-ui-board-open');
+  await paint(`document.getElementById('boardToggle').click()`);
+  const boardClosed = await win.webContents.executeJavaScript(`getComputedStyle(document.querySelector('.bottom-stage')).display`);
+  if (peopleOpen === 'none' || peopleClosed !== 'none' || boardOpen === 'none' || boardClosed !== 'none') {
+    console.error('panels ' + JSON.stringify({ peopleOpen, peopleClosed, boardOpen, boardClosed }));
+    app.exit(1);
+    return;
+  }
+  win.setContentSize(720, 576);
+  const narrow = await paint(`(() => { document.body.classList.remove('show-side', 'people-open', 'board-open'); const more = document.getElementById('moreTools'); more.hidden = true; document.getElementById('moreToggle').setAttribute('aria-expanded', 'false'); return ${fit}; })()`);
+  const onScreen = (b) => b && b.display !== 'none' && b.left >= -1 && b.right <= narrow.innerWidth + 1 && b.top >= -1;
+  if (narrow.innerWidth > 780 || narrow.side.display !== 'none' || !onScreen(narrow.channels) || !onScreen(narrow.lobby) || !onScreen(narrow.people) || !onScreen(narrow.board) || !onScreen(narrow.more) || narrow.pageScrolls || narrow.headerClipped || narrow.chat !== 'flex') {
+    console.error('narrow shell ' + JSON.stringify(narrow));
+    app.exit(1);
+    return;
+  }
+  await shot('shell-ui-gaming-720');
+  const narrowPanels = await win.webContents.executeJavaScript(`(() => {
+    const shown = (el) => getComputedStyle(el).display !== 'none';
+    document.getElementById('menuBtn').click();
+    const sideOpen = shown(document.getElementById('channelSidebar'));
+    const expanded = document.getElementById('menuBtn').getAttribute('aria-expanded');
+    document.getElementById('menuBtn').click();
+    const sideClosed = shown(document.getElementById('channelSidebar'));
+    document.getElementById('peopleToggle').click();
+    const people = shown(document.querySelector('.right'));
+    document.getElementById('peopleToggle').click();
+    const peopleOff = shown(document.querySelector('.right'));
+    document.getElementById('boardToggle').click();
+    const board = shown(document.querySelector('.bottom-stage'));
+    document.getElementById('boardToggle').click();
+    const boardOff = shown(document.querySelector('.bottom-stage'));
+    document.getElementById('moreToggle').click();
+    const more = shown(document.getElementById('moreTools'));
+    const customize = document.getElementById('customizeBtn').getBoundingClientRect();
+    document.getElementById('moreToggle').click();
+    const moreOff = shown(document.getElementById('moreTools'));
+    return { sideOpen, expanded, sideClosed, people, peopleOff, board, boardOff, more, moreOff, customizeRight: customize.right };
+  })()`);
+  if (!narrowPanels.sideOpen || narrowPanels.expanded !== 'true' || narrowPanels.sideClosed || !narrowPanels.people || narrowPanels.peopleOff || !narrowPanels.board || narrowPanels.boardOff || !narrowPanels.more || narrowPanels.moreOff) {
+    console.error('narrow controls ' + JSON.stringify(narrowPanels));
+    app.exit(1);
+    return;
+  }
+  console.log('OMNI_SHELL_TEST_OK ' + narrow.innerWidth + 'x' + narrow.innerHeight);
   capturingPage = true;
   let page;
   try {
