@@ -660,6 +660,22 @@ async function runSelfTest(win) {
     return;
   }
   console.log('OMNI_SHELL_TEST_OK ' + narrow.innerWidth + 'x' + narrow.innerHeight);
+  win.setContentSize(1280, 800);
+  await win.webContents.executeJavaScript(`document.body.classList.remove('show-lobby', 'show-side', 'people-open', 'board-open'); toast('Gaming mode');`);
+  await new Promise(resolve => setTimeout(resolve, 280));
+  const toastFit = await win.webContents.executeJavaScript(`(() => {
+    const t = document.getElementById('toast').getBoundingClientRect();
+    const s = document.querySelector('.send').getBoundingClientRect();
+    const overlaps = !(t.right < s.left || t.left > s.right || t.bottom < s.top || t.top > s.bottom);
+    return { overlaps, toastBottom: Math.round(t.bottom), sendTop: Math.round(s.top) };
+  })()`);
+  await shot('shell-ui-toast');
+  if (toastFit.overlaps) {
+    console.error('toast covers Send ' + JSON.stringify(toastFit));
+    app.exit(1);
+    return;
+  }
+  console.log('OMNI_TOAST_TEST_OK ' + JSON.stringify(toastFit));
   capturingPage = true;
   let page;
   try {

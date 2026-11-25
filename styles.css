@@ -318,7 +318,7 @@ body.chat-bubbles .chat-msg.me .rx{background:rgba(255,255,255,.88);color:#1a213
 .send:hover{filter:brightness(1.06)}
 
 /* ---------- 10. Toast, modal, menus, pop-ups, drawer ---------- */
-.toast{position:fixed;right:20px;bottom:22px;background:var(--text);color:var(--panel);border-radius:var(--r-sm);padding:10px 14px;box-shadow:var(--float);font-size:.86rem;font-weight:500;opacity:0;transform:translateY(8px);pointer-events:none;transition:.22s var(--ease);z-index:120;max-width:min(420px,90vw)}
+.toast{position:fixed;right:20px;bottom:96px;background:var(--text);color:var(--panel);border-radius:var(--r-sm);padding:10px 14px;box-shadow:var(--float);font-size:.86rem;font-weight:500;opacity:0;transform:translateY(8px);pointer-events:none;transition:.22s var(--ease);z-index:120;max-width:min(420px,90vw)}
 .toast.show{opacity:1;transform:none}
 .modal-backdrop{position:fixed;inset:0;background:rgba(8,10,12,.55);display:none;place-items:center;z-index:105;padding:16px}
 .modal{width:min(600px,94vw);max-height:90vh;overflow:auto;background:var(--panel);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--float);padding:20px 22px}
